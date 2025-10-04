@@ -15,6 +15,13 @@ This is not a complete implementation of the BPMN 2.0 specification but intend t
 
 ## Migration
 
+### Version 0.14 (not yet released)
+
+- Make the parallel join less permissive for BPMN design errors and respect the number of tokens required before proceeding. Returns an error if gateway is stalled.
+- Added support for cancel event. Used in transactions.
+- Early detection if multiple none start events is found in same process.
+- Removed unused errors.
+
 ### Version 0.13
 
 - Changed the order of `Process<S, T>` to `Process<T, S = Build>` to be able to specify a default state. Removed the annoying Process::<_, T>.
@@ -260,6 +267,7 @@ Default flow
 
 - **None**
 - **Terminate** ends the process. In a subprocess, only the subprocess ends and continues with the parent process.
+- **Cancel** ends the process in a transaction and run the cancel boundary.
 - **Other symbols** can be used in a subprocess to select a subprocess boundary event.
 
 ## Intermediate event
@@ -277,6 +285,7 @@ Example with message Link throw and catch event:
 Only interrupting boundary events is implemented and can be used on a task or a sub-process.
 
 Boundary symbols recognized:
+- Cancel
 - Compensation
 - Conditional
 - Error
