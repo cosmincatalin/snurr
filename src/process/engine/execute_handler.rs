@@ -7,33 +7,33 @@ use std::borrow::Cow;
 
 #[derive(Default, Debug)]
 pub(super) struct ExecuteHandler<'a> {
-    data: Vec<Cow<'a, [usize]>>,
+    tokens_ready: Vec<Cow<'a, [usize]>>,
     uncommitted: Vec<Cow<'a, [usize]>>,
     token_stack: Vec<TokenData<'a>>,
 }
 
 impl<'a> ExecuteHandler<'a> {
-    pub(super) fn new(item: Cow<'a, [usize]>) -> Self {
+    pub(super) fn new(tokens: Cow<'a, [usize]>) -> Self {
         Self {
-            data: vec![item],
+            tokens_ready: vec![tokens],
             uncommitted: Default::default(),
             token_stack: Default::default(),
         }
     }
 
-    // Take everything to be processed.
-    pub(super) fn take(&mut self) -> Vec<Cow<'a, [usize]>> {
-        std::mem::take(&mut self.data)
+    // Return tokens to be processed.
+    pub(super) fn active_tokens(&mut self) -> Vec<Cow<'a, [usize]>> {
+        std::mem::take(&mut self.tokens_ready)
     }
 
-    // Push directly to data without the involvement of token_stack.
-    // When we join a gateway with one output we should not increase the token_stack.
+    // Push directly to tokens_ready without the involvement of token_stack.
+    // When we JOIN a gateway with one output we should not increase the token_stack.
     pub(super) fn immediate(&mut self, item: Cow<'a, [usize]>) {
-        self.data.push(item);
+        self.tokens_ready.push(item);
     }
 
-    // New tokens cannot be added immediately until all processed tokens have been correlated.
-    pub(super) fn pending(&mut self, item: Cow<'a, [usize]>) {
+    // If a gateway FORK is involved, we need to use the token stack. Even if the gateway only selects one flow.
+    pub(super) fn pending_fork(&mut self, item: Cow<'a, [usize]>) {
         self.uncommitted.push(item);
     }
 
@@ -42,7 +42,7 @@ impl<'a> ExecuteHandler<'a> {
         for item in self.uncommitted.drain(..) {
             debug!("NEW TOKENS {}", item.len());
             self.token_stack.push(TokenData::new(item.len()));
-            self.data.push(item);
+            self.tokens_ready.push(item);
         }
     }
 

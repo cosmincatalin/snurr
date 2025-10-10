@@ -31,7 +31,7 @@ macro_rules! maybe_fork {
 }
 
 impl<T> Process<T, Run> {
-    pub(super) fn execute<'a>(&'a self, input: ExecuteInput<'a, T>) -> ExecuteResult<'a>
+    pub(super) fn execute<'a>(&'a self, input: ExecuteInput<'a, T>) -> Result<&'a Event, Error>
     where
         T: Send,
     {
@@ -39,16 +39,16 @@ impl<T> Process<T, Run> {
         let start = [input.process.start().ok_or(Error::MissingStartEvent)?];
         let mut handler = ExecuteHandler::new(Cow::from(&start));
         loop {
-            let all_tokens = handler.take();
-            if all_tokens.is_empty() {
+            let active_tokens = handler.active_tokens();
+            if active_tokens.is_empty() {
                 return last_visited_end.ok_or(Error::MissingEndEvent);
             }
 
-            let result_iter = {
+            let flows_iter = {
                 #[cfg(feature = "parallel")]
                 {
                     use rayon::iter::{IntoParallelRefIterator, ParallelIterator};
-                    let results: Vec<Vec<_>> = all_tokens
+                    let results: Vec<Vec<_>> = active_tokens
                         .par_iter()
                         .map(|tokens| {
                             tokens
@@ -60,35 +60,33 @@ impl<T> Process<T, Run> {
                     results.into_iter()
                 }
                 #[cfg(not(feature = "parallel"))]
-                all_tokens
+                active_tokens
                     .iter()
                     .map(|tokens| tokens.iter().map(|token| self.flow(token, &input)))
             };
 
-            for inner_iter in result_iter.rev() {
-                // Correlate tokens that have arrived
-                for result in inner_iter {
-                    match result {
+            for flows_result in flows_iter.rev() {
+                for flow_result in flows_result {
+                    match flow_result {
                         Ok(Return::Join(gateway)) => handler.consume_token(Some(gateway)),
                         Ok(Return::End(event)) => {
-                            match event {
-                                Event {
-                                    event_type: EventType::End,
-                                    symbol: Some(Symbol::Terminate | Symbol::Cancel),
-                                    ..
-                                } => return Ok(event),
-                                _ => {
-                                    last_visited_end.replace(event);
-                                }
+                            if let Event {
+                                event_type: EventType::End,
+                                symbol: Some(Symbol::Terminate | Symbol::Cancel),
+                                ..
+                            } = event
+                            {
+                                return Ok(event);
                             }
+                            last_visited_end.replace(event);
                             handler.consume_token(None);
                         }
-                        Ok(Return::Fork(item)) => handler.pending(item),
+                        Ok(Return::Fork(item)) => handler.pending_fork(item),
                         Err(value) => return Err(value),
                     }
                 }
 
-                // Once all inputs have been merged for a gateway, then proceed with its outputs.
+                // Check if all inputs have been merged for a gateway, then proceed with its outputs.
                 if let Some(
                     gateway @ Gateway {
                         gateway_type,
@@ -97,23 +95,20 @@ impl<T> Process<T, Run> {
                     },
                 ) = handler.tokens_consumed()?
                 {
-                    // We cannot add new tokens until we have correlated all processed flows.
                     match gateway_type {
                         GatewayType::Parallel | GatewayType::Inclusive if outputs.len() == 1 => {
                             handler.immediate(Cow::Borrowed(outputs.ids()));
                         }
                         GatewayType::Parallel => {
-                            handler.pending(Cow::Borrowed(outputs.ids()));
+                            handler.pending_fork(Cow::Borrowed(outputs.ids()));
                         }
-                        // Handle Fork, the user code determine next token(s) to run.
                         GatewayType::Inclusive => {
-                            handler.pending(self.handle_inclusive_gateway(&input, gateway)?);
+                            handler.pending_fork(self.handle_inclusive_gateway(&input, gateway)?);
                         }
                         _ => {}
                     }
                 }
             }
-            // Commit pending forks
             handler.commit();
         }
     }
@@ -424,8 +419,6 @@ fn default_path<'a>(
         .map(Id::local)
         .ok_or_else(|| Error::MissingDefault(gateway.to_string(), name_or_id.to_string()))
 }
-
-pub(super) type ExecuteResult<'a> = Result<&'a Event, Error>;
 
 // Data for the execution engine.
 pub(super) struct ExecuteInput<'a, T> {
