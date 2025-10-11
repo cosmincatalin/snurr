@@ -4,7 +4,7 @@ use super::{Run, handler::Data};
 use crate::{
     Process, Symbol,
     error::{AT_LEAST_TWO_OUTGOING, Error},
-    model::{ActivityType, Bpmn, Event, EventType, Gateway, GatewayType, Id, With},
+    model::{ActivityType, Bpmn, Event, EventType, Gateway, GatewayType, With},
     process::{handler::CallbackResult, reader::ProcessData},
 };
 use execute_handler::ExecuteHandler;
@@ -259,9 +259,9 @@ impl<T> Process<T, Run> {
                         id,
                         func_idx,
                         name,
-                        default,
                         outputs,
                         inputs,
+                        ..
                     },
                 ) => {
                     let name_or_id = name.as_deref().unwrap_or(id.bpmn());
@@ -296,7 +296,7 @@ impl<T> Process<T, Run> {
                                             name_or_id.to_string(),
                                         )
                                     })?,
-                                None => default_path(default, gateway_type, name_or_id)?,
+                                None => gateway.default_path()?,
                             }
                         }
                         // Handle a regular Join or a JoinFork. In both cases, we need to wait for all tokens.
@@ -358,12 +358,11 @@ impl<T> Process<T, Run> {
     fn handle_inclusive_gateway<'a>(
         &'a self,
         input: &ExecuteInput<'a, T>,
-        Gateway {
+        gateway @ Gateway {
             gateway_type,
             id,
             func_idx,
             name,
-            default,
             outputs,
             ..
         }: &'a Gateway,
@@ -387,7 +386,7 @@ impl<T> Process<T, Run> {
             })? {
             With::Flow(value) => find_flow(value)?,
             With::Fork(values) => match values.as_slice() {
-                [] => default_path(default, gateway_type, name_or_id)?,
+                [] => gateway.default_path()?,
                 [value] => find_flow(value)?,
                 [..] => {
                     let mut outputs = HashSet::with_capacity(values.len());
@@ -403,21 +402,10 @@ impl<T> Process<T, Run> {
                     return Ok(Cow::Owned(outputs.into_iter().collect()));
                 }
             },
-            With::Default => default_path(default, gateway_type, name_or_id)?,
+            With::Default => gateway.default_path()?,
         };
         Ok(Cow::Owned(vec![*value]))
     }
-}
-
-fn default_path<'a>(
-    default: &'a Option<Id>,
-    gateway: &GatewayType,
-    name_or_id: &str,
-) -> Result<&'a usize, Error> {
-    default
-        .as_ref()
-        .map(Id::local)
-        .ok_or_else(|| Error::MissingDefault(gateway.to_string(), name_or_id.to_string()))
 }
 
 // Data for the execution engine.

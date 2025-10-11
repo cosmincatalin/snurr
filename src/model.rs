@@ -338,6 +338,17 @@ pub(crate) struct Gateway {
     pub(crate) inputs: u16,
 }
 
+impl Gateway {
+    pub(crate) fn default_path(&self) -> Result<&usize, Error> {
+        self.default.as_ref().map(Id::local).ok_or_else(|| {
+            Error::MissingDefault(
+                self.gateway_type.to_string(),
+                self.name.as_deref().unwrap_or(self.id.bpmn()).into(),
+            )
+        })
+    }
+}
+
 #[derive(Debug)]
 pub(crate) struct Event {
     pub(crate) event_type: EventType,
