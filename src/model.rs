@@ -575,15 +575,10 @@ impl Outputs {
         process_data: &[Bpmn],
     ) -> Option<&usize> {
         self.local_ids.iter().find(|index| {
-            process_data
-                .get(**index)
-                .and_then(|bpmn| {
-                    if let Bpmn::SequenceFlow { target_ref, .. } = bpmn {
-                        return process_data.get(*target_ref.local());
-                    }
-                    None
-                })
-                .is_some_and(|bpmn| match bpmn {
+            if let Some(Bpmn::SequenceFlow { target_ref, .. }) = process_data.get(**index)
+                && let Some(bpmn) = process_data.get(*target_ref.local())
+            {
+                return match bpmn {
                     // We can target both ReceiveTask or Events.
                     Bpmn::Activity {
                         activity_type: ActivityType::ReceiveTask,
@@ -602,7 +597,9 @@ impl Outputs {
                         ..
                     }) => symbol == &search.1 && name.as_str() == search.0,
                     _ => false,
-                })
+                };
+            }
+            false
         })
     }
 }
