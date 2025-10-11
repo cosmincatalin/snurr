@@ -3,7 +3,7 @@ use crate::{
     model::{Gateway, GatewayType},
 };
 use log::debug;
-use std::borrow::Cow;
+use std::{borrow::Cow, fmt::Display};
 
 #[derive(Default, Debug)]
 pub(super) struct ExecuteHandler<'a> {
@@ -58,10 +58,7 @@ impl<'a> ExecuteHandler<'a> {
         if let Some(token_data) = self.token_stack.last()
             && token_data.consumed()
         {
-            debug!(
-                "ALL CONSUMED created: {}, consumed: {}",
-                token_data.created, token_data.consumed
-            );
+            debug!("ALL CONSUMED {}", token_data);
 
             if let Some(gateways) = self.token_stack.pop().map(|data| data.joined) {
                 let gateway = gateways.first().copied();
@@ -118,6 +115,22 @@ impl<'a> TokenData<'a> {
 
     fn consumed(&self) -> bool {
         self.created.saturating_sub(self.consumed) == 0
+    }
+}
+
+impl<'a> Display for TokenData<'a> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(
+            f,
+            "created: {}, consumed: {}, joined: '{}'",
+            self.created,
+            self.consumed,
+            self.joined
+                .iter()
+                .map(|gw| gw.name.as_deref().unwrap_or(gw.id.bpmn()))
+                .collect::<Vec<_>>()
+                .join(", ")
+        )
     }
 }
 
