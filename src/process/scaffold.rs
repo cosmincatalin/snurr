@@ -3,7 +3,7 @@ use std::{collections::HashSet, io::Write, path::Path};
 use crate::{
     Process,
     error::Error,
-    model::{ActivityType, Bpmn, Event, Gateway, GatewayType, Symbol},
+    model::{Activity, ActivityType, Bpmn, Event, Gateway, GatewayType, Symbol},
 };
 
 impl<T> Process<T> {
@@ -22,11 +22,11 @@ impl<T> Process<T> {
         let mut scaffold = Scaffold::default();
         self.diagram.data().iter().for_each(|process| {
             process.iter().for_each(|bpmn| {
-                    if let Bpmn::Activity {
+                    if let Bpmn::Activity(Activity {
                         activity_type: ActivityType::Task,
                         id,
                         ..
-                    } = bpmn
+                    }) = bpmn
                     {
                         let symbols = if let Some(boundaries) = process.activity_boundaries(id)
                         {
@@ -127,7 +127,7 @@ impl<'a> Scaffold<'a> {
         // First all tasks
         for task in self.tasks.iter() {
             let Task {
-                bpmn: Bpmn::Activity { id, name, .. },
+                bpmn: Bpmn::Activity(Activity { id, name, .. }),
                 symbols,
             } = task
             else {

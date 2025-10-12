@@ -4,7 +4,7 @@ use super::{Run, handler::Data};
 use crate::{
     Process, Symbol,
     error::{AT_LEAST_TWO_OUTGOING, Error},
-    model::{ActivityType, Bpmn, Event, EventType, Gateway, GatewayType, With},
+    model::{Activity, ActivityType, Bpmn, Event, EventType, Gateway, GatewayType, With},
     process::{handler::CallbackResult, reader::ProcessData},
 };
 use execute_handler::ExecuteHandler;
@@ -19,11 +19,11 @@ enum Return<'a> {
 }
 
 macro_rules! maybe_fork {
-    ($self:expr, $outputs:expr, $data:expr, $ty:expr, $noi:expr) => {
+    ($outputs:expr, $ty:expr) => {
         if $outputs.len() <= 1 {
             $outputs
                 .first()
-                .ok_or_else(|| Error::MissingOutput($ty.to_string(), $noi.to_string()))?
+                .ok_or_else(|| Error::MissingOutput($ty.to_string()))?
         } else {
             return Ok(Return::Fork(Cow::Borrowed($outputs.ids())));
         }
@@ -138,11 +138,10 @@ impl<T> Process<T, Run> {
                         ..
                     },
                 ) => {
-                    let name_or_id = name.as_deref().unwrap_or(id.bpmn());
-                    info!("{event_type}: {name_or_id}");
+                    info!("{event}");
                     match event_type {
                         EventType::Start | EventType::IntermediateCatch | EventType::Boundary => {
-                            maybe_fork!(self, outputs, data, event_type, name_or_id)
+                            maybe_fork!(outputs, event)
                         }
                         EventType::IntermediateThrow => {
                             match (name.as_ref(), symbol.as_ref()) {
@@ -151,7 +150,7 @@ impl<T> Process<T, Run> {
                                 }
                                 // Follow outputs for other throw events
                                 (Some(_), _) => {
-                                    maybe_fork!(self, outputs, data, event_type, name_or_id)
+                                    maybe_fork!(outputs, event)
                                 }
                                 _ => {
                                     Err(Error::MissingIntermediateThrowEventName(id.bpmn().into()))?
@@ -163,16 +162,16 @@ impl<T> Process<T, Run> {
                         }
                     }
                 }
-                Bpmn::Activity {
-                    activity_type,
-                    id,
-                    func_idx,
-                    name,
-                    outputs,
-                    ..
-                } => {
-                    let name_or_id = name.as_deref().unwrap_or(id.bpmn());
-                    info!("{activity_type}: {name_or_id}");
+                Bpmn::Activity(
+                    activity @ Activity {
+                        activity_type,
+                        id,
+                        func_idx,
+                        outputs,
+                        ..
+                    },
+                ) => {
+                    info!("{activity}");
                     match activity_type {
                         ActivityType::Task
                         | ActivityType::ScriptTask
@@ -188,22 +187,18 @@ impl<T> Process<T, Run> {
                                     Some(CallbackResult::Task(result)) => result,
                                     _ => None,
                                 })
-                                .ok_or_else(|| {
-                                    Error::MissingImplementation(
-                                        activity_type.to_string(),
-                                        name_or_id.to_string(),
-                                    )
-                                })? {
+                                .ok_or_else(|| Error::MissingImplementation(activity.to_string()))?
+                            {
                                 Some(boundary) => input
                                     .process
                                     .find_boundary(id, boundary.name(), boundary.symbol())
                                     .ok_or_else(|| {
                                         Error::MissingBoundary(
                                             boundary.to_string(),
-                                            name_or_id.into(),
+                                            activity.to_string(),
                                         )
                                     })?,
-                                None => maybe_fork!(self, outputs, data, activity_type, name_or_id),
+                                None => maybe_fork!(outputs, activity),
                             }
                         }
                         ActivityType::SubProcess {
@@ -237,18 +232,16 @@ impl<T> Process<T, Run> {
                                     .ok_or_else(|| {
                                         Error::MissingBoundary(
                                             symbol.to_string(),
-                                            name_or_id.into(),
+                                            activity.to_string(),
                                         )
                                     })?
                             } else {
                                 // Continue from subprocess
-                                maybe_fork!(self, outputs, data, activity_type, name_or_id)
+                                maybe_fork!(outputs, activity)
                             }
                         }
                         ActivityType::SubProcess { .. } => {
-                            return Err(Error::MissingProcessData(
-                                name.as_deref().unwrap_or(id.bpmn()).into(),
-                            ));
+                            return Err(Error::MissingProcessData(activity.to_string()));
                         }
                     }
                 }
@@ -256,22 +249,16 @@ impl<T> Process<T, Run> {
                 Bpmn::Gateway(
                     gateway @ Gateway {
                         gateway_type,
-                        id,
                         func_idx,
-                        name,
                         outputs,
                         inputs,
                         ..
                     },
                 ) => {
-                    let name_or_id = name.as_deref().unwrap_or(id.bpmn());
-                    info!("{gateway_type}: {name_or_id}");
+                    info!("{gateway}");
                     match gateway_type {
                         _ if outputs.len() == 0 => {
-                            return Err(Error::MissingOutput(
-                                gateway_type.to_string(),
-                                name_or_id.to_string(),
-                            ));
+                            return Err(Error::MissingOutput(gateway.to_string()));
                         }
                         // Handle 1 to 1, probably a temporary design or mistake
                         _ if outputs.len() == 1 && *inputs == 1 => outputs.first().unwrap(),
@@ -282,20 +269,11 @@ impl<T> Process<T, Run> {
                                     Some(CallbackResult::Exclusive(result)) => result,
                                     _ => None,
                                 })
-                                .ok_or_else(|| {
-                                    Error::MissingImplementation(
-                                        gateway_type.to_string(),
-                                        name_or_id.to_string(),
-                                    )
-                                })? {
+                                .ok_or_else(|| Error::MissingImplementation(gateway.to_string()))?
+                            {
                                 Some(value) => outputs
                                     .find_by_name_or_id(value, input.process.data())
-                                    .ok_or_else(|| {
-                                        Error::MissingOutput(
-                                            gateway_type.to_string(),
-                                            name_or_id.to_string(),
-                                        )
-                                    })?,
+                                    .ok_or_else(|| Error::MissingOutput(gateway.to_string()))?,
                                 None => gateway.default_path()?,
                             }
                         }
@@ -322,19 +300,13 @@ impl<T> Process<T, Run> {
                                         _ => None,
                                     }
                                 })
-                                .ok_or_else(|| {
-                                    Error::MissingImplementation(
-                                        gateway_type.to_string(),
-                                        name_or_id.to_string(),
-                                    )
-                                })?;
+                                .ok_or_else(|| Error::MissingImplementation(gateway.to_string()))?;
 
                             outputs
                                 .find_by_intermediate_event(&value, input.process.data())
                                 .ok_or_else(|| {
                                     Error::MissingIntermediateEvent(
-                                        gateway_type.to_string(),
-                                        name_or_id.to_string(),
+                                        gateway.to_string(),
                                         value.to_string(),
                                     )
                                 })?
@@ -347,7 +319,7 @@ impl<T> Process<T, Run> {
                     target_ref,
                     ..
                 } => {
-                    info!("SequenceFlow: {}", name.as_deref().unwrap_or(id.bpmn()));
+                    info!(r#"SequenceFlow "{}""#, name.as_deref().unwrap_or(id.bpmn()));
                     target_ref.local()
                 }
                 bpmn => return Err(Error::TypeNotImplemented(format!("{bpmn:?}"))),
@@ -359,21 +331,13 @@ impl<T> Process<T, Run> {
         &'a self,
         input: &ExecuteInput<'a, T>,
         gateway @ Gateway {
-            gateway_type,
-            id,
-            func_idx,
-            name,
-            outputs,
-            ..
+            func_idx, outputs, ..
         }: &'a Gateway,
     ) -> Result<Cow<'a, [usize]>, Error> {
-        let name_or_id = name.as_deref().unwrap_or(id.bpmn());
         let find_flow = |value| {
             outputs
                 .find_by_name_or_id(value, input.process.data())
-                .ok_or_else(|| {
-                    Error::MissingOutput(gateway_type.to_string(), name_or_id.to_string())
-                })
+                .ok_or_else(|| Error::MissingOutput(gateway.to_string()))
         };
 
         let value = match func_idx
@@ -381,9 +345,8 @@ impl<T> Process<T, Run> {
                 Some(CallbackResult::Inclusive(result)) => Some(result),
                 _ => None,
             })
-            .ok_or_else(|| {
-                Error::MissingImplementation(gateway_type.to_string(), name_or_id.to_string())
-            })? {
+            .ok_or_else(|| Error::MissingImplementation(gateway.to_string()))?
+        {
             With::Flow(value) => find_flow(value)?,
             With::Fork(values) => match values.as_slice() {
                 [] => gateway.default_path()?,
@@ -395,7 +358,7 @@ impl<T> Process<T, Run> {
                         if !outputs.insert(*find_flow(value)?) {
                             // The flow has already been used, we just log an warning and continue.
                             warn!(
-                                "Inclusive Gateway {name_or_id} used flow {value} multiple times. Discarded the duplicates."
+                                "{gateway} used flow {value} multiple times. Discarded the duplicates."
                             );
                         }
                     }

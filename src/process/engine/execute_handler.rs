@@ -65,18 +65,17 @@ impl<'a> ExecuteHandler<'a> {
 
                 // Determines whether enough tokens have arrived at the parallel gateway.
                 // Without this, parallel gateways are too permissive.
-                if let Some(Gateway {
-                    gateway_type: GatewayType::Parallel,
-                    inputs,
-                    id,
-                    name,
-                    ..
-                }) = gateway
+                if let Some(
+                    gateway @ Gateway {
+                        gateway_type: GatewayType::Parallel,
+                        inputs,
+                        ..
+                    },
+                ) = gateway
                     && gateways.len() < *inputs as usize
                 {
                     return Err(Error::BpmnRequirement(format!(
-                        "Execution stopped. Not enough tokens at the parallel gateway '{}'",
-                        name.as_deref().unwrap_or(id.bpmn())
+                        "Execution stopped. Not enough tokens at {gateway}"
                     )));
                 }
 
@@ -122,12 +121,12 @@ impl<'a> Display for TokenData<'a> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(
             f,
-            "created: {}, consumed: {}, joined: '{}'",
+            "created: {}, consumed: {}, joined: {}",
             self.created,
             self.consumed,
             self.joined
                 .iter()
-                .map(|gw| gw.name.as_deref().unwrap_or(gw.id.bpmn()))
+                .map(|gw| gw.to_string())
                 .collect::<Vec<_>>()
                 .join(", ")
         )

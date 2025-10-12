@@ -1,6 +1,6 @@
 use crate::{
     error::{BUILD_PROCESS_ERROR_MSG, Error, ONLY_ONE_START_EVENT},
-    model::{Event, Gateway, *},
+    model::{Activity, Event, Gateway, *},
     process::Diagram,
 };
 use std::collections::HashMap;
@@ -140,7 +140,7 @@ impl ProcessData {
             .collect();
 
         self.data.iter_mut().for_each(|bpmn| match bpmn {
-            Bpmn::Activity { outputs, .. } => outputs.update_local_ids(&bpmn_index),
+            Bpmn::Activity(Activity { outputs, .. }) => outputs.update_local_ids(&bpmn_index),
             Bpmn::Event(Event {
                 event_type,
                 id,

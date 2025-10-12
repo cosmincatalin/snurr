@@ -218,7 +218,7 @@ fn inclusive_gateway_no_output() -> Result<()> {
 
     match bpmn.run(Counter::default()) {
         Err(error) => assert!(
-            matches!(error, Error::MissingOutput(_, _)),
+            matches!(error, Error::MissingOutput(_)),
             "Expected missing output"
         ),
         _ => panic!("Expected an error"),

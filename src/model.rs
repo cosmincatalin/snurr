@@ -340,12 +340,21 @@ pub(crate) struct Gateway {
 
 impl Gateway {
     pub(crate) fn default_path(&self) -> Result<&usize, Error> {
-        self.default.as_ref().map(Id::local).ok_or_else(|| {
-            Error::MissingDefault(
-                self.gateway_type.to_string(),
-                self.name.as_deref().unwrap_or(self.id.bpmn()).into(),
-            )
-        })
+        self.default
+            .as_ref()
+            .map(Id::local)
+            .ok_or_else(|| Error::MissingDefault(self.to_string()))
+    }
+}
+
+impl Display for Gateway {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(
+            f,
+            r#"{} "{}""#,
+            self.gateway_type,
+            self.name.as_deref().unwrap_or(self.id.bpmn())
+        )
     }
 }
 
@@ -359,15 +368,40 @@ pub(crate) struct Event {
     pub(crate) outputs: Outputs,
 }
 
+impl Display for Event {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(
+            f,
+            r#"{} "{}""#,
+            self.event_type,
+            self.name.as_deref().unwrap_or(self.id.bpmn())
+        )
+    }
+}
+
+#[derive(Debug)]
+pub(crate) struct Activity {
+    pub(crate) activity_type: ActivityType,
+    pub(crate) id: Id,
+    pub(crate) func_idx: Option<usize>,
+    pub(crate) name: Option<String>,
+    pub(crate) outputs: Outputs,
+}
+
+impl Display for Activity {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(
+            f,
+            r#"{} "{}""#,
+            self.activity_type,
+            self.name.as_deref().unwrap_or(self.id.bpmn())
+        )
+    }
+}
+
 #[derive(Debug)]
 pub(crate) enum Bpmn {
-    Activity {
-        activity_type: ActivityType,
-        id: Id,
-        func_idx: Option<usize>,
-        name: Option<String>,
-        outputs: Outputs,
-    },
+    Activity(Activity),
     Definitions {
         id: Id,
     },
@@ -393,7 +427,7 @@ impl Bpmn {
         match self {
             Bpmn::Event(Event { id, .. })
             | Bpmn::SequenceFlow { id, .. }
-            | Bpmn::Activity { id, .. }
+            | Bpmn::Activity(Activity { id, .. })
             | Bpmn::Definitions { id, .. }
             | Bpmn::Gateway(Gateway { id, .. })
             | Bpmn::Process { id, .. } => Ok(id),
@@ -405,10 +439,10 @@ impl Bpmn {
 
     pub(crate) fn update_data_index(&mut self, value: usize) {
         match self {
-            Bpmn::Activity {
+            Bpmn::Activity(Activity {
                 activity_type: ActivityType::SubProcess { data_index },
                 ..
-            }
+            })
             | Bpmn::Process { data_index, .. } => {
                 data_index.replace(value);
             }
@@ -420,7 +454,7 @@ impl Bpmn {
         match self {
             Bpmn::Event(Event { id, .. })
             | Bpmn::SequenceFlow { id, .. }
-            | Bpmn::Activity { id, .. }
+            | Bpmn::Activity(Activity { id, .. })
             | Bpmn::Definitions { id, .. }
             | Bpmn::Gateway(Gateway { id, .. })
             | Bpmn::Process { id, .. } => id.local_id = value,
@@ -432,7 +466,7 @@ impl Bpmn {
         match self {
             Bpmn::Event(Event { outputs, .. })
             | Bpmn::Gateway(Gateway { outputs, .. })
-            | Bpmn::Activity { outputs, .. } => outputs.add(text),
+            | Bpmn::Activity(Activity { outputs, .. }) => outputs.add(text),
             _ => {}
         }
     }
@@ -482,7 +516,7 @@ impl TryFrom<(&[u8], HashMap<&[u8], String>)> for Bpmn {
             }),
             TASK | SCRIPT_TASK | USER_TASK | SERVICE_TASK | CALL_ACTIVITY | RECEIVE_TASK
             | SEND_TASK | MANUAL_TASK | BUSINESS_RULE_TASK | SUB_PROCESS | TRANSACTION => {
-                Bpmn::Activity {
+                Bpmn::Activity(Activity {
                     activity_type: bpmn_type.try_into()?,
                     id: attributes
                         .remove(ATTRIB_ID)
@@ -491,7 +525,7 @@ impl TryFrom<(&[u8], HashMap<&[u8], String>)> for Bpmn {
                     func_idx: None,
                     name: attributes.remove(ATTRIB_NAME),
                     outputs: Default::default(),
-                }
+                })
             }
             EXCLUSIVE_GATEWAY | PARALLEL_GATEWAY | INCLUSIVE_GATEWAY | EVENT_BASED_GATEWAY => {
                 Bpmn::Gateway(Gateway {
@@ -591,11 +625,11 @@ impl Outputs {
             {
                 return match bpmn {
                     // We can target both ReceiveTask or Events.
-                    Bpmn::Activity {
+                    Bpmn::Activity(Activity {
                         activity_type: ActivityType::ReceiveTask,
                         name: Some(name),
                         ..
-                    } => search.1 == Symbol::Message && name.as_str() == search.0,
+                    }) => search.1 == Symbol::Message && name.as_str() == search.0,
                     Bpmn::Event(Event {
                         symbol:
                             Some(

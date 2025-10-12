@@ -6,17 +6,17 @@ pub enum Error {
     #[error("BPMN type {0} missing id")]
     MissingId(String),
 
-    #[error("{0} with name or id '{1}' has no output. (Used correct name or id?)")]
-    MissingOutput(String, String),
+    #[error("{0} has no output. (Used correct name or id?)")]
+    MissingOutput(String),
 
-    #[error("{0} with name or id '{1}' has no implementation")]
-    MissingImplementation(String, String),
+    #[error("{0} has no implementation")]
+    MissingImplementation(String),
 
     #[error("Missing implementations {0}")]
     MissingImplementations(String),
 
-    #[error("{0} with name or id '{1}' has no default flow")]
-    MissingDefault(String, String),
+    #[error("{0} has no default flow")]
+    MissingDefault(String),
 
     #[error("could not find BPMN data with id {0}")]
     MisssingBpmnData(String),
@@ -36,8 +36,8 @@ pub enum Error {
     #[error("could not find {0} boundary symbol attached to {1}")]
     MissingBoundary(String, String),
 
-    #[error("{0} with name or id '{1}' could not find {2}")]
-    MissingIntermediateEvent(String, String, String),
+    #[error("{0} could not find {1}")]
+    MissingIntermediateEvent(String, String),
 
     #[error("missing intermediate throw event name on {0}")]
     MissingIntermediateThrowEventName(String),

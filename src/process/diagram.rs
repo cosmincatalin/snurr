@@ -1,6 +1,6 @@
 use super::handler::HandlerMap;
 use crate::{
-    model::{ActivityType, Bpmn, Gateway, GatewayType},
+    model::{Activity, ActivityType, Bpmn, Gateway, GatewayType},
     process::{handler::HandlerType, reader::ProcessData},
 };
 use std::collections::HashSet;
@@ -34,7 +34,7 @@ impl Diagram {
         for outer in self.data.iter_mut() {
             for bpmn in outer.data_mut() {
                 match bpmn {
-                    Bpmn::Activity {
+                    Bpmn::Activity(Activity {
                         id,
                         name,
                         func_idx,
@@ -49,7 +49,7 @@ impl Diagram {
                             | ActivityType::ManualTask
                             | ActivityType::BusinessRuleTask),
                         ..
-                    } => {
+                    }) => {
                         let name_or_id = name.as_deref().unwrap_or(id.bpmn());
                         if let Some(id) = handler_map.get(HandlerType::Task, name_or_id) {
                             func_idx.replace(*id);
