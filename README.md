@@ -70,21 +70,21 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 If RUST_LOG=info is set when running [example](#usage)
 
 ```
- INFO  snurr::process::engine > Start: Begin process
- INFO  snurr::process::engine > SequenceFlow: count
- INFO  snurr::process::engine > Task: Count 1
- INFO  snurr::process::engine > SequenceFlow: control
- INFO  snurr::process::engine > Exclusive: equal to 3
- INFO  snurr::process::engine > SequenceFlow: NO
- INFO  snurr::process::engine > Task: Count 1
- INFO  snurr::process::engine > SequenceFlow: control
- INFO  snurr::process::engine > Exclusive: equal to 3
- INFO  snurr::process::engine > SequenceFlow: NO
- INFO  snurr::process::engine > Task: Count 1
- INFO  snurr::process::engine > SequenceFlow: control
- INFO  snurr::process::engine > Exclusive: equal to 3
- INFO  snurr::process::engine > SequenceFlow: YES
- INFO  snurr::process::engine > End: End process
+ INFO  snurr::process::engine > Start "Begin process"
+ INFO  snurr::process::engine > SequenceFlow "count"
+ INFO  snurr::process::engine > Task "Count 1"
+ INFO  snurr::process::engine > SequenceFlow "control"
+ INFO  snurr::process::engine > Exclusive "equal to 3"
+ INFO  snurr::process::engine > SequenceFlow "NO"
+ INFO  snurr::process::engine > Task "Count 1"
+ INFO  snurr::process::engine > SequenceFlow "control"
+ INFO  snurr::process::engine > Exclusive "equal to 3"
+ INFO  snurr::process::engine > SequenceFlow "NO"
+ INFO  snurr::process::engine > Task "Count 1"
+ INFO  snurr::process::engine > SequenceFlow "control"
+ INFO  snurr::process::engine > Exclusive "equal to 3"
+ INFO  snurr::process::engine > SequenceFlow "YES"
+ INFO  snurr::process::engine > End "End process"
 Count: 3
 ```
 
