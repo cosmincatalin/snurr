@@ -30,6 +30,14 @@ macro_rules! maybe_fork {
     };
 }
 
+macro_rules! find_flow {
+    ($outputs:expr, $value:expr, $input:expr, $ty:expr) => {
+        $outputs
+            .find_by_name_or_id($value, $input.process.data())
+            .ok_or_else(|| Error::MissingOutput($ty.to_string()))
+    };
+}
+
 impl<T> Process<T, Run> {
     pub(super) fn execute<'a>(&'a self, input: ExecuteInput<'a, T>) -> Result<&'a Event, Error>
     where
@@ -271,9 +279,7 @@ impl<T> Process<T, Run> {
                                 })
                                 .ok_or_else(|| Error::MissingImplementation(gateway.to_string()))?
                             {
-                                Some(value) => outputs
-                                    .find_by_name_or_id(value, input.process.data())
-                                    .ok_or_else(|| Error::MissingOutput(gateway.to_string()))?,
+                                Some(value) => find_flow!(outputs, value, input, gateway)?,
                                 None => gateway.default_path()?,
                             }
                         }
@@ -334,12 +340,6 @@ impl<T> Process<T, Run> {
             func_idx, outputs, ..
         }: &'a Gateway,
     ) -> Result<Cow<'a, [usize]>, Error> {
-        let find_flow = |value| {
-            outputs
-                .find_by_name_or_id(value, input.process.data())
-                .ok_or_else(|| Error::MissingOutput(gateway.to_string()))
-        };
-
         let value = match func_idx
             .and_then(|index| match self.handler.run(index, input.user_data()) {
                 Some(CallbackResult::Inclusive(result)) => Some(result),
@@ -347,22 +347,22 @@ impl<T> Process<T, Run> {
             })
             .ok_or_else(|| Error::MissingImplementation(gateway.to_string()))?
         {
-            With::Flow(value) => find_flow(value)?,
+            With::Flow(value) => find_flow!(outputs, value, input, gateway)?,
             With::Fork(values) => match values.as_slice() {
                 [] => gateway.default_path()?,
-                [value] => find_flow(value)?,
+                [value] => find_flow!(outputs, value, input, gateway)?,
                 [..] => {
-                    let mut outputs = HashSet::with_capacity(values.len());
+                    let mut tokens = HashSet::with_capacity(values.len());
                     for &value in values.iter() {
                         // Breaks on first error
-                        if !outputs.insert(*find_flow(value)?) {
+                        if !tokens.insert(*find_flow!(outputs, value, input, gateway)?) {
                             // The flow has already been used, we just log an warning and continue.
                             warn!(
                                 "{gateway} used flow {value} multiple times. Discarded the duplicates."
                             );
                         }
                     }
-                    return Ok(Cow::Owned(outputs.into_iter().collect()));
+                    return Ok(Cow::Owned(tokens.into_iter().collect()));
                 }
             },
             With::Default => gateway.default_path()?,
