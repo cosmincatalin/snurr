@@ -123,11 +123,7 @@ impl HandlerMap {
             .insert(name.clone(), index)
             .is_some()
         {
-            warn(handler_type, name);
+            log::warn!(r#"Installed {handler_type} with name "{name}" multiple times"#);
         }
     }
-}
-
-fn warn(ty: impl Display, name: impl Display) {
-    log::warn!(r#"Installed {ty} with name "{name}" multiple times"#);
 }
