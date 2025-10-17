@@ -1,7 +1,5 @@
 mod builder;
 
-pub(crate) use builder::ProcessData;
-
 use super::Diagram;
 use crate::error::Error;
 use crate::model::*;
@@ -13,7 +11,7 @@ use std::collections::HashMap;
 use std::io::BufRead;
 
 // Read BPMN content and return the Diagram
-pub(super) fn read_bpmn<R: BufRead>(mut reader: Reader<R>) -> Result<Diagram, Error> {
+pub fn read_bpmn<R: BufRead>(mut reader: Reader<R>) -> Result<Diagram, Error> {
     let mut builder = DataBuilder::default();
     let mut buf = Vec::new();
     loop {

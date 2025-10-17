@@ -3,9 +3,10 @@ mod execute_handler;
 use super::{Run, handler::Data};
 use crate::{
     Process, Symbol,
+    diagram::ProcessData,
     error::{AT_LEAST_TWO_OUTGOING, Error},
     model::{Activity, ActivityType, Bpmn, Event, EventType, Gateway, GatewayType, With},
-    process::{handler::CallbackResult, reader::ProcessData},
+    process::handler::CallbackResult,
 };
 use execute_handler::ExecuteHandler;
 use log::{info, warn};
@@ -32,8 +33,9 @@ macro_rules! maybe_fork {
 
 macro_rules! find_flow {
     ($outputs:expr, $value:expr, $input:expr, $ty:expr) => {
-        $outputs
-            .find_by_name_or_id($value, $input.process.data())
+        $input
+            .process
+            .find_by_name_or_id($value, $outputs)
             .ok_or_else(|| Error::MissingOutput($ty.to_string()))
     };
 }
@@ -308,8 +310,9 @@ impl<T> Process<T, Run> {
                                 })
                                 .ok_or_else(|| Error::MissingImplementation(gateway.to_string()))?;
 
-                            outputs
-                                .find_by_intermediate_event(&value, input.process.data())
+                            input
+                                .process
+                                .find_by_intermediate_event(&value, outputs)
                                 .ok_or_else(|| {
                                     Error::MissingIntermediateEvent(
                                         gateway.to_string(),

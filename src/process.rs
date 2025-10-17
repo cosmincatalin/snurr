@@ -1,11 +1,14 @@
-mod diagram;
 mod engine;
 pub mod handler;
-mod reader;
 mod scaffold;
 
-use crate::{IntermediateEvent, With, error::Error, model::Bpmn, process::handler::Callback};
-use diagram::Diagram;
+use crate::{
+    IntermediateEvent, With,
+    diagram::{Diagram, reader::read_bpmn},
+    error::Error,
+    model::Bpmn,
+    process::handler::Callback,
+};
 use engine::ExecuteInput;
 use handler::{Data, Handler, TaskResult};
 use std::{
@@ -43,7 +46,7 @@ impl<T> Process<T> {
     /// ```
     pub fn new(path: impl AsRef<Path>) -> Result<Self, Error> {
         Ok(Self {
-            diagram: reader::read_bpmn(quick_xml::Reader::from_file(path)?)?,
+            diagram: read_bpmn(quick_xml::Reader::from_file(path)?)?,
             handler: Default::default(),
             _marker: Default::default(),
         })
@@ -123,7 +126,7 @@ impl<T> FromStr for Process<T> {
     /// ```
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         Ok(Self {
-            diagram: reader::read_bpmn(quick_xml::Reader::from_str(s))?,
+            diagram: read_bpmn(quick_xml::Reader::from_str(s))?,
             handler: Default::default(),
             _marker: Default::default(),
         })

@@ -65,7 +65,6 @@ impl<T> Process<T> {
                         && outputs.len() > 1
                     {
                         let names = outputs
-                            .ids()
                             .iter()
                             .map(|index| process.get(*index))
                             .filter_map(|bpmn| {

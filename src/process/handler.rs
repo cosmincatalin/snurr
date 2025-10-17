@@ -87,7 +87,7 @@ impl<T> Handler<T> {
 }
 
 #[derive(Debug, Hash, PartialEq, Eq, Clone, Copy)]
-pub(super) enum HandlerType {
+pub enum HandlerType {
     Task,
     Exclusive,
     Inclusive,
@@ -101,12 +101,12 @@ impl Display for HandlerType {
 }
 
 #[derive(Default, Debug)]
-pub(super) struct HandlerMap {
+pub struct HandlerMap {
     map: HashMap<HandlerType, HashMap<String, usize>>,
 }
 
 impl HandlerMap {
-    pub(super) fn get(&self, handler_type: HandlerType, key: &str) -> Option<&usize> {
+    pub fn get(&self, handler_type: HandlerType, key: &str) -> Option<&usize> {
         if let Some(inner_map) = self.map.get(&handler_type) {
             inner_map.get(key)
         } else {

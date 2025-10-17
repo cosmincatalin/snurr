@@ -1,6 +1,9 @@
-use crate::error::Error;
+use crate::{
+    diagram::{Id, Outputs},
+    error::Error,
+};
 use core::fmt;
-use std::{collections::HashMap, fmt::Display, ops::AddAssign};
+use std::{collections::HashMap, fmt::Display};
 
 pub(crate) const DEFINITIONS: &[u8] = b"definitions";
 pub(crate) const PROCESS: &[u8] = b"process";
@@ -422,62 +425,6 @@ pub(crate) enum Bpmn {
     },
 }
 
-impl Bpmn {
-    pub(crate) fn id(&self) -> Result<&Id, Error> {
-        match self {
-            Bpmn::Event(Event { id, .. })
-            | Bpmn::SequenceFlow { id, .. }
-            | Bpmn::Activity(Activity { id, .. })
-            | Bpmn::Definitions { id, .. }
-            | Bpmn::Gateway(Gateway { id, .. })
-            | Bpmn::Process { id, .. } => Ok(id),
-            Bpmn::Direction { direction_type, .. } => {
-                Err(Error::MissingId(direction_type.to_string()))
-            }
-        }
-    }
-
-    pub(crate) fn update_data_index(&mut self, value: usize) {
-        match self {
-            Bpmn::Activity(Activity {
-                activity_type: ActivityType::SubProcess { data_index },
-                ..
-            })
-            | Bpmn::Process { data_index, .. } => {
-                data_index.replace(value);
-            }
-            _ => {}
-        }
-    }
-
-    pub(crate) fn update_local_id(&mut self, value: usize) {
-        match self {
-            Bpmn::Event(Event { id, .. })
-            | Bpmn::SequenceFlow { id, .. }
-            | Bpmn::Activity(Activity { id, .. })
-            | Bpmn::Definitions { id, .. }
-            | Bpmn::Gateway(Gateway { id, .. })
-            | Bpmn::Process { id, .. } => id.local_id = value,
-            _ => {}
-        }
-    }
-
-    pub(crate) fn add_output(&mut self, text: String) {
-        match self {
-            Bpmn::Event(Event { outputs, .. })
-            | Bpmn::Gateway(Gateway { outputs, .. })
-            | Bpmn::Activity(Activity { outputs, .. }) => outputs.add(text),
-            _ => {}
-        }
-    }
-
-    pub(crate) fn add_input(&mut self) {
-        if let Bpmn::Gateway(Gateway { inputs, .. }) = self {
-            inputs.add_assign(1);
-        }
-    }
-}
-
 impl TryFrom<(&[u8], HashMap<&[u8], String>)> for Bpmn {
     type Error = Error;
 
@@ -559,129 +506,5 @@ impl TryFrom<(&[u8], HashMap<&[u8], String>)> for Bpmn {
             _ => return Err(Error::TypeNotImplemented(bpmn_type_str.into())),
         };
         Ok(ty)
-    }
-}
-
-#[derive(Debug, Default)]
-pub(crate) struct Outputs {
-    bpmn_ids: Vec<String>,
-    local_ids: Vec<usize>,
-}
-
-impl Display for Outputs {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{}", self.bpmn_ids.join(", "))
-    }
-}
-
-impl Outputs {
-    fn add(&mut self, output_id: impl Into<String>) {
-        self.bpmn_ids.push(output_id.into());
-        self.local_ids.push(0);
-    }
-
-    pub(crate) fn ids(&self) -> &[usize] {
-        &self.local_ids
-    }
-
-    pub(crate) fn len(&self) -> usize {
-        self.local_ids.len()
-    }
-
-    pub(crate) fn first(&self) -> Option<&usize> {
-        self.local_ids.first()
-    }
-
-    pub(crate) fn update_local_ids(&mut self, bpmn_index: &HashMap<String, usize>) {
-        for (idx, value) in self.bpmn_ids.iter().enumerate() {
-            if let Some(index) = bpmn_index.get(value) {
-                self.local_ids[idx] = *index;
-            }
-        }
-    }
-
-    pub(crate) fn find_by_name_or_id(
-        &self,
-        value: impl AsRef<str>,
-        process_data: &[Bpmn],
-    ) -> Option<&usize> {
-        self.local_ids.iter().find(|index| {
-            if let Some(Bpmn::SequenceFlow { id, name, .. }) = process_data.get(**index) {
-                return name.as_deref().is_some_and(|name| name == value.as_ref())
-                    || id.bpmn() == value.as_ref();
-            }
-            false
-        })
-    }
-
-    pub(crate) fn find_by_intermediate_event(
-        &self,
-        search: &IntermediateEvent,
-        process_data: &[Bpmn],
-    ) -> Option<&usize> {
-        self.local_ids.iter().find(|index| {
-            if let Some(Bpmn::SequenceFlow { target_ref, .. }) = process_data.get(**index)
-                && let Some(bpmn) = process_data.get(*target_ref.local())
-            {
-                return match bpmn {
-                    // We can target both ReceiveTask or Events.
-                    Bpmn::Activity(Activity {
-                        activity_type: ActivityType::ReceiveTask,
-                        name: Some(name),
-                        ..
-                    }) => search.1 == Symbol::Message && name.as_str() == search.0,
-                    Bpmn::Event(Event {
-                        symbol:
-                            Some(
-                                symbol @ (Symbol::Message
-                                | Symbol::Signal
-                                | Symbol::Timer
-                                | Symbol::Conditional),
-                            ),
-                        name: Some(name),
-                        ..
-                    }) => symbol == &search.1 && name.as_str() == search.0,
-                    _ => false,
-                };
-            }
-            false
-        })
-    }
-}
-
-#[derive(Debug)]
-pub(crate) struct Id {
-    bpmn_id: String,
-    local_id: usize,
-}
-
-impl Display for Id {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "({} {})", self.bpmn_id, self.local_id)
-    }
-}
-
-impl Id {
-    pub(crate) fn bpmn(&self) -> &str {
-        &self.bpmn_id
-    }
-
-    pub(crate) fn local(&self) -> &usize {
-        &self.local_id
-    }
-
-    pub(crate) fn update_local_id(&mut self, map: &HashMap<String, usize>) {
-        if let Some(index) = map.get(&self.bpmn_id) {
-            self.local_id = *index;
-        }
-    }
-}
-
-impl From<String> for Id {
-    fn from(bpmn_id: String) -> Self {
-        Self {
-            bpmn_id,
-            local_id: 0,
-        }
     }
 }

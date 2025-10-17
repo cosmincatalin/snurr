@@ -59,6 +59,7 @@
 //! }
 //! ```
 
+mod diagram;
 mod error;
 mod model;
 mod process;
