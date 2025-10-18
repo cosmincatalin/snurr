@@ -174,34 +174,6 @@ impl Display for GatewayType {
     }
 }
 
-#[derive(Debug, Copy, Clone)]
-pub(crate) enum DirectionType {
-    Incoming,
-    Outgoing,
-}
-
-impl TryFrom<&[u8]> for DirectionType {
-    type Error = Error;
-
-    fn try_from(value: &[u8]) -> Result<Self, Self::Error> {
-        Ok(match value {
-            INCOMING => DirectionType::Incoming,
-            OUTGOING => DirectionType::Outgoing,
-            _ => {
-                return Err(Error::TypeNotImplemented(
-                    std::str::from_utf8(value)?.into(),
-                ));
-            }
-        })
-    }
-}
-
-impl Display for DirectionType {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        fmt::Debug::fmt(&self, f)
-    }
-}
-
 /// BPMN Symbols
 #[derive(Debug, PartialEq, Eq, Clone, Hash)]
 pub enum Symbol {
@@ -326,10 +298,7 @@ pub(crate) enum Bpmn {
     Definitions {
         id: Id,
     },
-    Direction {
-        direction_type: DirectionType,
-        text: Option<String>,
-    },
+    Direction(Option<String>),
     Event(Event),
     Gateway(Gateway),
     Process {
@@ -417,10 +386,7 @@ impl TryFrom<(&[u8], HashMap<&[u8], String>)> for Bpmn {
                     .ok_or(Error::MissingTargetRef)?
                     .into(),
             },
-            INCOMING | OUTGOING => Bpmn::Direction {
-                direction_type: bpmn_type.try_into()?,
-                text: None,
-            },
+            INCOMING | OUTGOING => Bpmn::Direction(None),
             _ => return Err(Error::TypeNotImplemented(bpmn_type_str.into())),
         };
         Ok(ty)

@@ -134,7 +134,7 @@ impl ProcessData {
             .data
             .iter()
             .enumerate()
-            .filter_map(|(index, bpmn)| bpmn.id().ok().map(Id::bpmn).map(|id| (id.into(), index)))
+            .filter_map(|(index, bpmn)| bpmn.id().map(|id| (id.into(), index)))
             .collect();
 
         self.data.iter_mut().for_each(|bpmn| match bpmn {
@@ -351,17 +351,15 @@ impl From<String> for Id {
 }
 
 impl Bpmn {
-    fn id(&self) -> Result<&Id, Error> {
+    fn id(&self) -> Option<&str> {
         match self {
             Bpmn::Event(Event { id, .. })
             | Bpmn::SequenceFlow { id, .. }
             | Bpmn::Activity(Activity { id, .. })
             | Bpmn::Definitions { id, .. }
             | Bpmn::Gateway(Gateway { id, .. })
-            | Bpmn::Process { id, .. } => Ok(id),
-            Bpmn::Direction { direction_type, .. } => {
-                Err(Error::MissingId(direction_type.to_string()))
-            }
+            | Bpmn::Process { id, .. } => Some(id.bpmn()),
+            _ => None,
         }
     }
 

@@ -1,7 +1,7 @@
 use crate::{
+    bpmn::{Event, *},
     diagram::{Diagram, ProcessData},
     error::{BUILD_PROCESS_ERROR_MSG, Error},
-    bpmn::{Event, *},
 };
 
 //
@@ -53,12 +53,8 @@ impl DataBuilder {
     }
 
     pub(super) fn add_direction(&mut self, direction: &[u8]) {
-        if let Some((
-            Bpmn::Direction {
-                text: Some(value), ..
-            },
-            parent,
-        )) = self.stack.pop().zip(self.stack.last_mut())
+        if let Some(Bpmn::Direction(Some(value))) = self.stack.pop()
+            && let Some(parent) = self.stack.last_mut()
         {
             match direction {
                 OUTGOING => parent.add_output(value),
@@ -68,7 +64,7 @@ impl DataBuilder {
     }
 
     pub(super) fn add_text(&mut self, value: String) {
-        if let Some(Bpmn::Direction { text, .. }) = self.stack.last_mut() {
+        if let Some(Bpmn::Direction(text)) = self.stack.last_mut() {
             text.replace(value);
         }
     }
