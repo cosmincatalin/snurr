@@ -1,6 +1,6 @@
 use crate::{
     Error,
-    model::{Gateway, GatewayType},
+    bpmn::{Gateway, GatewayType},
 };
 use log::debug;
 use std::{borrow::Cow, fmt::Display};

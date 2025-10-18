@@ -3,14 +3,14 @@ pub mod handler;
 mod scaffold;
 
 use crate::{
-    IntermediateEvent, With,
+    api::{Data, IntermediateEvent, TaskResult, With},
+    bpmn::Bpmn,
     diagram::{Diagram, reader::read_bpmn},
     error::Error,
-    model::Bpmn,
     process::handler::Callback,
 };
 use engine::ExecuteInput;
-use handler::{Data, Handler, TaskResult};
+use handler::Handler;
 use std::{
     marker::PhantomData,
     path::Path,

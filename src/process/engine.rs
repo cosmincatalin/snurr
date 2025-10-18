@@ -1,11 +1,12 @@
 mod execute_handler;
 
-use super::{Run, handler::Data};
+use super::Run;
 use crate::{
-    Process, Symbol,
+    Process,
+    api::{Data, With},
+    bpmn::{Activity, ActivityType, Bpmn, Event, EventType, Gateway, GatewayType, Symbol},
     diagram::ProcessData,
     error::{AT_LEAST_TWO_OUTGOING, Error},
-    model::{Activity, ActivityType, Bpmn, Event, EventType, Gateway, GatewayType, With},
     process::handler::CallbackResult,
 };
 use execute_handler::ExecuteHandler;

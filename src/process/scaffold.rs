@@ -3,7 +3,7 @@ use std::{collections::HashSet, io::Write, path::Path};
 use crate::{
     Process,
     error::Error,
-    model::{Activity, ActivityType, Bpmn, Event, Gateway, GatewayType, Symbol},
+    bpmn::{Activity, ActivityType, Bpmn, Event, Gateway, GatewayType, Symbol},
 };
 
 impl<T> Process<T> {

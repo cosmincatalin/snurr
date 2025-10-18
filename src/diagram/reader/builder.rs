@@ -1,7 +1,7 @@
 use crate::{
     diagram::{Diagram, ProcessData},
     error::{BUILD_PROCESS_ERROR_MSG, Error},
-    model::{Event, *},
+    bpmn::{Event, *},
 };
 
 //

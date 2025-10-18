@@ -1,8 +1,8 @@
 mod builder;
 
 use super::Diagram;
+use crate::bpmn::*;
 use crate::error::Error;
-use crate::model::*;
 use builder::DataBuilder;
 use log::error;
 use quick_xml::events::Event;

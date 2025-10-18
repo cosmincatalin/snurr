@@ -1,9 +1,10 @@
 pub mod reader;
 
 use crate::{
-    Error, IntermediateEvent, Symbol,
+    Error,
+    api::IntermediateEvent,
+    bpmn::{Activity, ActivityType, Bpmn, Event, EventType, Gateway, GatewayType, Symbol},
     error::ONLY_ONE_START_EVENT,
-    model::{Activity, ActivityType, Bpmn, Event, EventType, Gateway, GatewayType},
     process::handler::{HandlerMap, HandlerType},
 };
 

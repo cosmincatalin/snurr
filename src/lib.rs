@@ -59,11 +59,13 @@
 //! }
 //! ```
 
+mod api;
+mod bpmn;
 mod diagram;
 mod error;
-mod model;
 mod process;
 
+pub use api::{Boundary, Data, IntermediateEvent, TaskResult, With};
+pub use bpmn::Symbol;
 pub use error::{Error, Result};
-pub use model::{Boundary, IntermediateEvent, Symbol, With};
-pub use process::{Build, Process, Run, handler::Data, handler::TaskResult};
+pub use process::{Build, Process, Run};

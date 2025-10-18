@@ -1,15 +1,9 @@
-use crate::{Error, IntermediateEvent, With, error::FUNC_MAP_ERROR_MSG, model::Boundary};
-use std::{
-    collections::HashMap,
-    fmt::Display,
-    sync::{Arc, Mutex},
+use crate::{
+    Error,
+    api::{Data, IntermediateEvent, TaskResult, With},
+    error::FUNC_MAP_ERROR_MSG,
 };
-
-/// Generic type for the task and gateway inputs.
-pub type Data<T> = Arc<Mutex<T>>;
-
-/// Task result type
-pub type TaskResult = Option<Boundary>;
+use std::{collections::HashMap, fmt::Display};
 
 type TaskCallback<T> = Box<dyn Fn(Data<T>) -> TaskResult + Sync + Send>;
 type ExclusiveCallback<T> = Box<dyn Fn(Data<T>) -> Option<&'static str> + Sync + Send>;
