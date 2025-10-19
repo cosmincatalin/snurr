@@ -7,7 +7,6 @@ use crate::{
     bpmn::{Activity, ActivityType, Bpmn, Event, EventType, Gateway, GatewayType, Symbol},
     diagram::ProcessData,
     error::{AT_LEAST_TWO_OUTGOING, Error},
-    process::handler::CallbackResult,
 };
 use execute_handler::ExecuteHandler;
 use log::{info, warn};
@@ -194,12 +193,10 @@ impl<T> Process<T, Run> {
                         | ActivityType::ManualTask
                         | ActivityType::BusinessRuleTask => {
                             match func_idx
-                                .map(|index| match self.handler.run(index, input.user_data()) {
-                                    Some(CallbackResult::Task(result)) => result,
-                                    _ => None,
-                                })
-                                .ok_or_else(|| Error::MissingImplementation(activity.to_string()))?
-                            {
+                                .map(|index| self.handler.run_task(index, input.user_data()))
+                                .ok_or_else(|| {
+                                    Error::MissingImplementation(activity.to_string())
+                                })?? {
                                 Some(boundary) => input
                                     .process
                                     .find_boundary(id, boundary.name(), boundary.symbol())
@@ -276,12 +273,10 @@ impl<T> Process<T, Run> {
                         GatewayType::Exclusive if outputs.len() == 1 => outputs.first().unwrap(),
                         GatewayType::Exclusive => {
                             match func_idx
-                                .map(|index| match self.handler.run(index, input.user_data()) {
-                                    Some(CallbackResult::Exclusive(result)) => result,
-                                    _ => None,
-                                })
-                                .ok_or_else(|| Error::MissingImplementation(gateway.to_string()))?
-                            {
+                                .map(|index| self.handler.run_exclusive(index, input.user_data()))
+                                .ok_or_else(|| {
+                                    Error::MissingImplementation(gateway.to_string())
+                                })?? {
                                 Some(value) => find_flow!(outputs, value, input, gateway)?,
                                 None => gateway.default_path()?,
                             }
@@ -303,13 +298,10 @@ impl<T> Process<T, Run> {
                         }
                         GatewayType::EventBased => {
                             let value = func_idx
-                                .and_then(|index| {
-                                    match self.handler.run(index, input.user_data()) {
-                                        Some(CallbackResult::EventBased(result)) => Some(result),
-                                        _ => None,
-                                    }
-                                })
-                                .ok_or_else(|| Error::MissingImplementation(gateway.to_string()))?;
+                                .map(|index| self.handler.run_eventbased(index, input.user_data()))
+                                .ok_or_else(|| {
+                                    Error::MissingImplementation(gateway.to_string())
+                                })??;
 
                             input
                                 .process
@@ -345,11 +337,8 @@ impl<T> Process<T, Run> {
         }: &'a Gateway,
     ) -> Result<Cow<'a, [usize]>, Error> {
         let value = match func_idx
-            .and_then(|index| match self.handler.run(index, input.user_data()) {
-                Some(CallbackResult::Inclusive(result)) => Some(result),
-                _ => None,
-            })
-            .ok_or_else(|| Error::MissingImplementation(gateway.to_string()))?
+            .map(|index| self.handler.run_inclusive(index, input.user_data()))
+            .ok_or_else(|| Error::MissingImplementation(gateway.to_string()))??
         {
             With::Flow(value) => find_flow!(outputs, value, input, gateway)?,
             With::Fork(values) => match values.as_slice() {

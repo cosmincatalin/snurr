@@ -17,24 +17,6 @@ pub(super) enum Callback<T> {
     EventBased(EventBasedCallback<T>),
 }
 
-pub(super) enum CallbackResult {
-    Task(TaskResult),
-    Exclusive(Option<&'static str>),
-    Inclusive(With),
-    EventBased(IntermediateEvent),
-}
-
-impl<T> Callback<T> {
-    fn run(&self, data: Data<T>) -> CallbackResult {
-        match self {
-            Callback::Task(func) => CallbackResult::Task((*func)(data)),
-            Callback::Exclusive(func) => CallbackResult::Exclusive((*func)(data)),
-            Callback::Inclusive(func) => CallbackResult::Inclusive((*func)(data)),
-            Callback::EventBased(func) => CallbackResult::EventBased((*func)(data)),
-        }
-    }
-}
-
 pub(super) struct Handler<T> {
     callbacks: Vec<Callback<T>>,
 
@@ -68,15 +50,59 @@ impl<T> Handler<T> {
         }
     }
 
+    pub(super) fn run_task(&self, index: usize, data: Data<T>) -> Result<TaskResult, Error> {
+        if let Some(Callback::Task(func)) = self.callbacks.get(index) {
+            Ok(func(data))
+        } else {
+            Err(Error::MissingImplementation(format!(
+                "Task with index: {index}"
+            )))
+        }
+    }
+
+    pub(super) fn run_exclusive(
+        &self,
+        index: usize,
+        data: Data<T>,
+    ) -> Result<Option<&'static str>, Error> {
+        if let Some(Callback::Exclusive(func)) = self.callbacks.get(index) {
+            Ok(func(data))
+        } else {
+            Err(Error::MissingImplementation(format!(
+                "Exclusive with index: {index}"
+            )))
+        }
+    }
+
+    pub(super) fn run_inclusive(&self, index: usize, data: Data<T>) -> Result<With, Error> {
+        if let Some(Callback::Inclusive(func)) = self.callbacks.get(index) {
+            Ok(func(data))
+        } else {
+            Err(Error::MissingImplementation(format!(
+                "Inclusive with index: {index}"
+            )))
+        }
+    }
+
+    pub(super) fn run_eventbased(
+        &self,
+        index: usize,
+        data: Data<T>,
+    ) -> Result<IntermediateEvent, Error> {
+        if let Some(Callback::EventBased(func)) = self.callbacks.get(index) {
+            Ok(func(data))
+        } else {
+            Err(Error::MissingImplementation(format!(
+                "Eventbased with index: {index}"
+            )))
+        }
+    }
+
     // Consumes the handler_map and cannot add more things with add_
     pub(super) fn build(&mut self) -> Result<HandlerMap, Error> {
         self.handler_map
             .take()
             .ok_or_else(|| Error::Builder(FUNC_MAP_ERROR_MSG.into()))
-    }
-
-    pub(super) fn run(&self, index: usize, data: Data<T>) -> Option<CallbackResult> {
-        self.callbacks.get(index).map(|cb| cb.run(data))
     }
 }
 
