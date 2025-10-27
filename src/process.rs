@@ -21,6 +21,21 @@ use std::{
 #[cfg(feature = "async")]
 use std::future::Future;
 
+#[cfg(feature = "async")]
+fn run_async_task<Fut>(fut: Fut) -> TaskResult
+where
+    Fut: Future<Output = TaskResult> + 'static + Send,
+{
+    tokio::runtime::Builder::new_current_thread()
+        .enable_all()
+        .build()
+        .map(|rt| rt.block_on(fut))
+        .unwrap_or_else(|e| {
+            log::error!("Failed to create tokio runtime: {}", e);
+            None
+        })
+}
+
 /// Process that contains information from the BPMN file
 pub struct Process<T, S = Build>
 where
@@ -75,22 +90,18 @@ impl<T> Process<T> {
             name,
             Callback::Task(Box::new(move |data| {
                 let fut = func(data);
-                // Try to use existing runtime, otherwise create a new one
-                match tokio::runtime::Handle::try_current() {
-                    Ok(handle) => handle.block_on(fut),
-                    Err(_) => {
-                        // Create a lightweight single-threaded runtime
-                        match tokio::runtime::Builder::new_current_thread()
-                            .enable_all()
-                            .build()
-                        {
-                            Ok(rt) => rt.block_on(fut),
-                            Err(e) => {
-                                log::error!("Failed to create tokio runtime: {}", e);
-                                None
-                            }
-                        }
-                    }
+
+                // If we're inside a runtime, spawn a thread to avoid nested block_on
+                if tokio::runtime::Handle::try_current().is_ok() {
+                    std::thread::spawn(move || run_async_task(fut))
+                        .join()
+                        .unwrap_or_else(|e| {
+                            log::error!("Thread panicked: {:?}", e);
+                            None
+                        })
+                } else {
+                    // No runtime exists, create one and block on the future
+                    run_async_task(fut)
                 }
             })),
         );
