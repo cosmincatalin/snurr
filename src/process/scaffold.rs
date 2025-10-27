@@ -2,8 +2,8 @@ use std::{collections::HashSet, io::Write, path::Path};
 
 use crate::{
     Process,
-    error::Error,
     bpmn::{Activity, ActivityType, Bpmn, Event, Gateway, GatewayType, Symbol},
+    error::Error,
 };
 
 impl<T> Process<T> {
