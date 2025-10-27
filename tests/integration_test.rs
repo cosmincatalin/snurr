@@ -42,6 +42,47 @@ fn two_task() -> Result<()> {
 }
 
 #[test]
+#[cfg(feature = "async")]
+fn async_task() -> Result<()> {
+    let bpmn = Process::new("tests/files/async_task.bpmn")?
+        .task_async("Async Task", |input: Data<Counter>| async move {
+            // Simulate async operation
+            tokio::task::yield_now().await;
+
+            // Value is computed after the await
+            let value = 1;
+            input.lock().unwrap().count += value;
+            None
+        })
+        .build()?;
+    let result = bpmn.run(Counter::default())?;
+    assert_eq!(result.count, 1);
+    Ok(())
+}
+
+#[test]
+#[cfg(feature = "async")]
+fn async_task_with_computed_value() -> Result<()> {
+    // Helper async function that returns a value
+    async fn compute_value() -> u32 {
+        tokio::task::yield_now().await;
+        3 // Value returned after async operation
+    }
+
+    let bpmn = Process::new("tests/files/async_task.bpmn")?
+        .task_async("Async Task", |input: Data<Counter>| async move {
+            // Value depends on the result of the await
+            let value = compute_value().await;
+            input.lock().unwrap().count += value;
+            None
+        })
+        .build()?;
+    let result = bpmn.run(Counter::default())?;
+    assert_eq!(result.count, 3);
+    Ok(())
+}
+
+#[test]
 fn subprocess() -> Result<()> {
     let bpmn = Process::new("tests/files/subprocess.bpmn")?
         .task(COUNT_1, func_cnt(1))
