@@ -42,6 +42,7 @@ fn two_task() -> Result<()> {
 }
 
 #[test]
+#[cfg(feature = "async")]
 fn async_task() -> Result<()> {
     let bpmn = Process::new("tests/files/async_task.bpmn")?
         .task_async("Async Task", |input: Data<Counter>| async move {
@@ -60,6 +61,7 @@ fn async_task() -> Result<()> {
 }
 
 #[test]
+#[cfg(feature = "async")]
 fn async_task_with_computed_value() -> Result<()> {
     // Helper async function that returns a value
     async fn compute_value() -> u32 {
