@@ -18,9 +18,6 @@ use std::{
     sync::{Arc, Mutex},
 };
 
-#[cfg(feature = "async")]
-use std::future::Future;
-
 /// Process that contains information from the BPMN file
 pub struct Process<T, S = Build>
 where
@@ -62,38 +59,6 @@ impl<T> Process<T> {
     {
         self.handler
             .add_callback(name, Callback::Task(Box::new(func)));
-        self
-    }
-
-    #[cfg(feature = "async")]
-    pub fn task_async<F, Fut>(mut self, name: impl Into<String>, func: F) -> Self
-    where
-        F: Fn(Data<T>) -> Fut + 'static + Sync + Send,
-        Fut: Future<Output = TaskResult> + 'static + Send,
-    {
-        self.handler.add_callback(
-            name,
-            Callback::Task(Box::new(move |data| {
-                let fut = func(data);
-                // Try to use existing runtime, otherwise create a new one
-                match tokio::runtime::Handle::try_current() {
-                    Ok(handle) => handle.block_on(fut),
-                    Err(_) => {
-                        // Create a lightweight single-threaded runtime
-                        match tokio::runtime::Builder::new_current_thread()
-                            .enable_all()
-                            .build()
-                        {
-                            Ok(rt) => rt.block_on(fut),
-                            Err(e) => {
-                                log::error!("Failed to create tokio runtime: {}", e);
-                                None
-                            }
-                        }
-                    }
-                }
-            })),
-        );
         self
     }
 
