@@ -18,24 +18,6 @@ use std::{
     sync::{Arc, Mutex},
 };
 
-#[cfg(feature = "async")]
-use std::future::Future;
-
-#[cfg(feature = "async")]
-fn run_async_task<Fut>(fut: Fut) -> TaskResult
-where
-    Fut: Future<Output = TaskResult> + 'static + Send,
-{
-    tokio::runtime::Builder::new_current_thread()
-        .enable_all()
-        .build()
-        .map(|rt| rt.block_on(fut))
-        .unwrap_or_else(|e| {
-            log::error!("Failed to create tokio runtime: {}", e);
-            None
-        })
-}
-
 /// Process that contains information from the BPMN file
 pub struct Process<T, S = Build>
 where
@@ -77,34 +59,6 @@ impl<T> Process<T> {
     {
         self.handler
             .add_callback(name, Callback::Task(Box::new(func)));
-        self
-    }
-
-    #[cfg(feature = "async")]
-    pub fn task_async<F, Fut>(mut self, name: impl Into<String>, func: F) -> Self
-    where
-        F: Fn(Data<T>) -> Fut + 'static + Sync + Send,
-        Fut: Future<Output = TaskResult> + 'static + Send,
-    {
-        self.handler.add_callback(
-            name,
-            Callback::Task(Box::new(move |data| {
-                let fut = func(data);
-
-                // If we're inside a runtime, spawn a thread to avoid nested block_on
-                if tokio::runtime::Handle::try_current().is_ok() {
-                    std::thread::spawn(move || run_async_task(fut))
-                        .join()
-                        .unwrap_or_else(|e| {
-                            log::error!("Thread panicked: {:?}", e);
-                            None
-                        })
-                } else {
-                    // No runtime exists, create one and block on the future
-                    run_async_task(fut)
-                }
-            })),
-        );
         self
     }
 

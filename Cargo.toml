@@ -26,12 +26,10 @@ quick-xml = "0.38"
 log = "0.4"
 thiserror = "2"
 rayon = { version = "1", optional = true }
-tokio = { version = "1", optional = true, features = ["rt"] }
 
 [features]
 default = []
 parallel = ["dep:rayon"]
-async = ["dep:tokio"]
 
 [dev-dependencies]
 pretty_env_logger = "0.5"
