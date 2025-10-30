@@ -26,9 +26,16 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         .build()?;
 
     // Run the process with input data
-    let counter = bpmn.run(Counter::default())?;
+    let result = bpmn.run(Counter::default())?;
 
     // Print the result.
-    println!("Count: {}", counter.count);
+    println!("Count: {}", result.data.count);
+    println!("Ended at node: {}", result.end_node.id);
+    if let Some(name) = &result.end_node.name {
+        println!("End node name: {}", name);
+    }
+    if result.end_node.symbol != snurr::Symbol::None {
+        println!("End event type: {:?}", result.end_node.symbol);
+    }
     Ok(())
 }

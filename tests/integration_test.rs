@@ -26,7 +26,7 @@ fn one_task() -> Result<()> {
         .task(COUNT_1, func_cnt(1))
         .build()?;
     let result = bpmn.run(Counter::default())?;
-    assert_eq!(result.count, 1);
+    assert_eq!(result.data.count, 1);
     Ok(())
 }
 
@@ -37,7 +37,7 @@ fn two_task() -> Result<()> {
         .task(COUNT_2, func_cnt(2))
         .build()?;
     let result = bpmn.run(Counter::default())?;
-    assert_eq!(result.count, 3);
+    assert_eq!(result.data.count, 3);
     Ok(())
 }
 
@@ -48,7 +48,7 @@ fn subprocess() -> Result<()> {
         .task(COUNT_2, func_cnt(2))
         .build()?;
     let result = bpmn.run(Counter::default())?;
-    assert_eq!(result.count, 3);
+    assert_eq!(result.data.count, 3);
     Ok(())
 }
 
@@ -58,7 +58,7 @@ fn subprocess_nested() -> Result<()> {
         .task(COUNT_1, func_cnt(1))
         .build()?;
     let result = bpmn.run(Counter::default())?;
-    assert_eq!(result.count, 3);
+    assert_eq!(result.data.count, 3);
     Ok(())
 }
 
@@ -70,7 +70,7 @@ fn subprocess_message_end() -> Result<()> {
         .exclusive("CHOOSE", |_| Default::default())
         .build()?;
     let result = bpmn.run(Counter::default())?;
-    assert_eq!(result.count, 3);
+    assert_eq!(result.data.count, 3);
     Ok(())
 }
 
@@ -82,7 +82,7 @@ fn subprocess_error_message_end() -> Result<()> {
         .task(COUNT_3, func_cnt(3))
         .build()?;
     let result = bpmn.run(Counter::default())?;
-    assert_eq!(result.count, 5);
+    assert_eq!(result.data.count, 5);
     Ok(())
 }
 
@@ -95,7 +95,7 @@ fn exclusive_gateway_default_path() -> Result<()> {
         .exclusive("CHOOSE", |_| Default::default())
         .build()?;
     let result = bpmn.run(Counter::default())?;
-    assert_eq!(result.count, 4);
+    assert_eq!(result.data.count, 4);
     Ok(())
 }
 
@@ -108,7 +108,7 @@ fn exclusive_gateway() -> Result<()> {
         .exclusive("CHOOSE", |_| "YES".into())
         .build()?;
     let result = bpmn.run(Counter::default())?;
-    assert_eq!(result.count, 3);
+    assert_eq!(result.data.count, 3);
     Ok(())
 }
 
@@ -122,7 +122,7 @@ fn exclusive_gateway_with_id() -> Result<()> {
         .exclusive("CHOOSE", |_| "Flow_15z7fe3".into())
         .build()?;
     let result = bpmn.run(Counter::default())?;
-    assert_eq!(result.count, 3);
+    assert_eq!(result.data.count, 3);
     Ok(())
 }
 
@@ -136,7 +136,7 @@ fn exclusive_gateway_with_gateway_converge() -> Result<()> {
         .exclusive("CHOOSE", |_| "YES".into())
         .build()?;
     let result = bpmn.run(Counter::default())?;
-    assert_eq!(result.count, 7);
+    assert_eq!(result.data.count, 7);
     Ok(())
 }
 
@@ -150,7 +150,7 @@ fn exclusive_gateway_with_task_converge() -> Result<()> {
         .exclusive("CHOOSE", |_| "YES".into())
         .build()?;
     let result = bpmn.run(Counter::default())?;
-    assert_eq!(result.count, 7);
+    assert_eq!(result.data.count, 7);
     Ok(())
 }
 
@@ -164,7 +164,7 @@ fn inclusive_gateway_default_path() -> Result<()> {
         .inclusive("CHOOSE", |_| Default::default())
         .build()?;
     let result = bpmn.run(Counter::default())?;
-    assert_eq!(result.count, 5);
+    assert_eq!(result.data.count, 5);
     Ok(())
 }
 
@@ -177,7 +177,7 @@ fn inclusive_gateway() -> Result<()> {
         .inclusive("CHOOSE", |_| vec!["YES", "NO"].into())
         .build()?;
     let result = bpmn.run(Counter::default())?;
-    assert_eq!(result.count, 7);
+    assert_eq!(result.data.count, 7);
     Ok(())
 }
 
@@ -190,7 +190,7 @@ fn inclusive_gateway_same_flow_used_multiple_times() -> Result<()> {
         .inclusive("CHOOSE", |_| vec!["YES", "YES", "NO", "NO"].into())
         .build()?;
     let result = bpmn.run(Counter::default())?;
-    assert_eq!(result.count, 7);
+    assert_eq!(result.data.count, 7);
     Ok(())
 }
 
@@ -203,7 +203,7 @@ fn inclusive_gateway_split_end() -> Result<()> {
         .inclusive("Gateway_0jgakfl", |_| vec!["YES", "NO"].into())
         .build()?;
     let result = bpmn.run(Counter::default())?;
-    assert_eq!(result.count, 6);
+    assert_eq!(result.data.count, 6);
     Ok(())
 }
 
@@ -234,7 +234,7 @@ fn inclusive_join_fork() -> Result<()> {
         .inclusive("GW B", |_| vec!["A", "B", "C"].into())
         .build()?;
     let result = bpmn.run(Counter::default())?;
-    assert_eq!(result.count, 6);
+    assert_eq!(result.data.count, 6);
     Ok(())
 }
 
@@ -246,7 +246,7 @@ fn inclusive_join_fork_gwb_one_flow() -> Result<()> {
         .inclusive("GW B", |_| "A".into())
         .build()?;
     let result = bpmn.run(Counter::default())?;
-    assert_eq!(result.count, 4);
+    assert_eq!(result.data.count, 4);
     Ok(())
 }
 
@@ -262,7 +262,7 @@ fn inclusive_join_fork_gateway_verify_sync() -> Result<()> {
         })
         .build()?;
     let result = bpmn.run(Counter::default())?;
-    assert_eq!(result.count, 7);
+    assert_eq!(result.data.count, 7);
     Ok(())
 }
 
@@ -278,7 +278,7 @@ fn parallel_inclusive_join_fork() -> Result<()> {
         .inclusive("GW BBB", |_| vec!["A", "B", "C", "D"].into())
         .build()?;
     let result = bpmn.run(Counter::default())?;
-    assert_eq!(result.count, 23);
+    assert_eq!(result.data.count, 23);
     Ok(())
 }
 
@@ -289,7 +289,7 @@ fn inclusive_with_parallel() -> Result<()> {
         .inclusive("GW A", |_| vec!["A", "B"].into())
         .build()?;
     let result = bpmn.run(Counter::default())?;
-    assert_eq!(result.count, 5);
+    assert_eq!(result.data.count, 5);
     Ok(())
 }
 
@@ -302,7 +302,7 @@ fn parallell_gateway() -> Result<()> {
         .task(COUNT_4, func_cnt(4))
         .build()?;
     let result = bpmn.run(Counter::default())?;
-    assert_eq!(result.count, 10);
+    assert_eq!(result.data.count, 10);
     Ok(())
 }
 
@@ -314,7 +314,7 @@ fn error_handling() -> Result<()> {
         .task(COUNT_3, func_cnt(3))
         .build()?;
     let result = bpmn.run(Counter::default())?;
-    assert_eq!(result.count, 3);
+    assert_eq!(result.data.count, 3);
     Ok(())
 }
 
@@ -326,7 +326,7 @@ fn two_boundary_timer_thrown() -> Result<()> {
         .task(COUNT_3, func_cnt(3))
         .build()?;
     let result = bpmn.run(Counter::default())?;
-    assert_eq!(result.count, 3);
+    assert_eq!(result.data.count, 3);
     Ok(())
 }
 
@@ -338,7 +338,7 @@ fn two_boundary_error_thrown() -> Result<()> {
         .task(COUNT_3, func_cnt(3))
         .build()?;
     let result = bpmn.run(Counter::default())?;
-    assert_eq!(result.count, 2);
+    assert_eq!(result.data.count, 2);
     Ok(())
 }
 
@@ -350,7 +350,7 @@ fn multiple_boundaries_same_symbol() -> Result<()> {
         .task(COUNT_3, func_cnt(3))
         .build()?;
     let result = bpmn.run(Counter::default())?;
-    assert_eq!(result.count, 3);
+    assert_eq!(result.data.count, 3);
     Ok(())
 }
 
@@ -362,7 +362,7 @@ fn intermediate_event() -> Result<()> {
         .task(COUNT_3, func_cnt(3))
         .build()?;
     let result = bpmn.run(Counter::default())?;
-    assert_eq!(result.count, 6);
+    assert_eq!(result.data.count, 6);
     Ok(())
 }
 
@@ -373,7 +373,7 @@ fn two_process_pools() -> Result<()> {
         .task(COUNT_2, func_cnt(2))
         .build()?;
     let result = bpmn.run(Counter::default())?;
-    assert_eq!(result.count, 3);
+    assert_eq!(result.data.count, 3);
     Ok(())
 }
 
@@ -401,7 +401,7 @@ fn showcase() -> Result<()> {
         .exclusive("RUN DEFAULT", |_| Default::default())
         .build()?;
     let result = bpmn.run(Counter::default())?;
-    assert_eq!(result.count, 16);
+    assert_eq!(result.data.count, 16);
     Ok(())
 }
 
@@ -411,7 +411,7 @@ fn task_fork() -> Result<()> {
         .task(COUNT_1, func_cnt(1))
         .build()?;
     let result = bpmn.run(Counter::default())?;
-    assert_eq!(result.count, 6);
+    assert_eq!(result.data.count, 6);
     Ok(())
 }
 
@@ -421,7 +421,7 @@ fn fork_explosion() -> Result<()> {
         .task(COUNT_1, func_cnt(1))
         .build()?;
     let result = bpmn.run(Counter::default())?;
-    assert_eq!(result.count, 33);
+    assert_eq!(result.data.count, 33);
     Ok(())
 }
 
@@ -429,7 +429,7 @@ fn fork_explosion() -> Result<()> {
 fn process_end_with_symbol() -> Result<()> {
     let bpmn = Process::new("tests/files/process_end_with_symbol.bpmn")?.build()?;
     let result = bpmn.run(Counter::default())?;
-    assert_eq!(result.count, 0);
+    assert_eq!(result.data.count, 0);
     Ok(())
 }
 
@@ -441,7 +441,7 @@ fn inclusive_gateway_not_all_joined() -> Result<()> {
         .exclusive("RUN C", |_| "C".into())
         .build()?;
     let result = bpmn.run(Counter::default())?;
-    assert_eq!(result.count, 3);
+    assert_eq!(result.data.count, 3);
     Ok(())
 }
 
@@ -451,7 +451,7 @@ fn parallel_gateway_not_all_joined() -> Result<()> {
         .task(COUNT_1, func_cnt(1))
         .build()?;
     let result = bpmn.run(Counter::default())?;
-    assert_eq!(result.count, 4);
+    assert_eq!(result.data.count, 4);
     Ok(())
 }
 
@@ -461,7 +461,7 @@ fn parallel_gateway_not_all_joined_inverse() -> Result<()> {
         .task(COUNT_1, func_cnt(1))
         .build()?;
     let result = bpmn.run(Counter::default())?;
-    assert_eq!(result.count, 4);
+    assert_eq!(result.data.count, 4);
     Ok(())
 }
 
@@ -471,7 +471,7 @@ fn parallel_multi() -> Result<()> {
         .task(COUNT_1, func_cnt(1))
         .build()?;
     let result = bpmn.run(Counter::default())?;
-    assert_eq!(result.count, 7);
+    assert_eq!(result.data.count, 7);
     Ok(())
 }
 
@@ -481,7 +481,7 @@ fn parallel_join_fork() -> Result<()> {
         .task(COUNT_1, func_cnt(1))
         .build()?;
     let result = bpmn.run(Counter::default())?;
-    assert_eq!(result.count, 6);
+    assert_eq!(result.data.count, 6);
     Ok(())
 }
 
@@ -491,7 +491,7 @@ fn parallel_parallel_join_fork() -> Result<()> {
         .task(COUNT_1, func_cnt(1))
         .build()?;
     let result = bpmn.run(Counter::default())?;
-    assert_eq!(result.count, 23);
+    assert_eq!(result.data.count, 23);
     Ok(())
 }
 
@@ -501,7 +501,7 @@ fn parallel_one_in_and_out() -> Result<()> {
         .task(COUNT_1, func_cnt(1))
         .build()?;
     let result = bpmn.run(Counter::default())?;
-    assert_eq!(result.count, 1);
+    assert_eq!(result.data.count, 1);
     Ok(())
 }
 
@@ -521,7 +521,7 @@ fn exclusive_gateway_merging_branching() -> Result<()> {
         .exclusive("MERGE AND BRANCH", |_| B)
         .build()?;
     let result = bpmn.run(Counter::default())?;
-    assert_eq!(result.count, 3);
+    assert_eq!(result.data.count, 3);
     Ok(())
 }
 
@@ -538,7 +538,7 @@ fn event_gateway() -> Result<()> {
         .event_based("SENIOR GATEKEEPER", |_| ("Sleeping", Symbol::Timer).into())
         .build()?;
     let result = bpmn.run(Counter::default())?;
-    assert_eq!(result.count, 2);
+    assert_eq!(result.data.count, 2);
     Ok(())
 }
 
@@ -552,7 +552,7 @@ fn single_flow() -> Result<()> {
         .exclusive("GW D", |_| A)
         .build()?;
     let result = bpmn.run(Counter::default())?;
-    assert_eq!(result.count, 18);
+    assert_eq!(result.data.count, 18);
     Ok(())
 }
 
@@ -565,7 +565,7 @@ fn terminate_event() -> Result<()> {
     let result = bpmn.run(Counter::default())?;
 
     // NOTE 2 or 3 is OK result. The order in concurrent scenarios might differ.
-    assert!(matches!(result.count, 2 | 3));
+    assert!(matches!(result.data.count, 2 | 3));
     Ok(())
 }
 
@@ -578,7 +578,7 @@ fn terminate_event_sub_process() -> Result<()> {
     let result = bpmn.run(Counter::default())?;
 
     // NOTE 4 or 5 is OK result. The order in concurrent scenarios might differ.
-    assert!(matches!(result.count, 4 | 5));
+    assert!(matches!(result.data.count, 4 | 5));
     Ok(())
 }
 
@@ -589,7 +589,7 @@ fn startevent_not_first() -> Result<()> {
         .task(COUNT_1, func_cnt(1))
         .build()?;
     let result = bpmn.run(Counter::default())?;
-    assert_eq!(result.count, 4);
+    assert_eq!(result.data.count, 4);
     Ok(())
 }
 
@@ -626,7 +626,7 @@ fn cancel_transaction() -> Result<()> {
         .build()?;
     let result = bpmn.run(Counter::default())?;
     // NOTE 2 or 3 is OK result. The order in concurrent scenarios might differ.
-    assert!(matches!(result.count, 3 | 4));
+    assert!(matches!(result.data.count, 3 | 4));
     Ok(())
 }
 
@@ -678,5 +678,55 @@ fn parallel_unbalanced2() -> Result<()> {
         ),
         _ => panic!("Expected an error"),
     }
+    Ok(())
+}
+
+#[test]
+fn process_output_contains_end_node_info() -> Result<()> {
+    let bpmn = Process::new("tests/files/one_task.bpmn")?
+        .task(COUNT_1, func_cnt(1))
+        .build()?;
+    let result = bpmn.run(Counter::default())?;
+
+    // Verify we get the data
+    assert_eq!(result.data.count, 1);
+
+    // Verify we get end node information
+    assert!(!result.end_node.id.is_empty(), "End node ID should not be empty");
+
+    // Regular end event should have no symbol
+    assert_eq!(result.end_node.symbol, Symbol::None);
+
+    Ok(())
+}
+
+#[test]
+fn process_output_message_end_event() -> Result<()> {
+    let bpmn = Process::new("tests/files/process_end_with_symbol.bpmn")?.build()?;
+    let result = bpmn.run(Counter::default())?;
+
+    // Verify the data
+    assert_eq!(result.data.count, 0);
+
+    // Verify the end event symbol is captured
+    assert_eq!(result.end_node.symbol, Symbol::Message, "Expected Message end event symbol");
+
+    Ok(())
+}
+
+#[test]
+fn process_output_terminate_end_event() -> Result<()> {
+    let bpmn = Process::new("tests/files/terminate_event.bpmn")?
+        .task(COUNT_1, func_cnt(1))
+        .exclusive("Terminate?", |_| "YES".into())
+        .build()?;
+    let result = bpmn.run(Counter::default())?;
+
+    // Verify the data (2 or 3 is OK due to concurrent execution)
+    assert!(matches!(result.data.count, 2 | 3));
+
+    // Verify the end event symbol is Terminate
+    assert_eq!(result.end_node.symbol, Symbol::Terminate, "Expected Terminate end event symbol");
+
     Ok(())
 }

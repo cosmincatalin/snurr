@@ -3,8 +3,8 @@ pub mod handler;
 mod scaffold;
 
 use crate::{
-    api::{Data, IntermediateEvent, TaskResult, With},
-    bpmn::Bpmn,
+    api::{Data, EndNode, IntermediateEvent, ProcessOutput, TaskResult, With},
+    bpmn::{Bpmn, Symbol},
     diagram::{Diagram, reader::read_bpmn},
     error::Error,
     process::handler::Callback,
@@ -134,7 +134,7 @@ impl<T> FromStr for Process<T> {
 }
 
 impl<T> Process<T, Run> {
-    /// Run the process and return the `T` or an `Error`.
+    /// Run the process and return the `ProcessOutput<T>` containing the final data and end node information, or an `Error`.
     /// ```
     /// use snurr::Process;
     ///
@@ -162,18 +162,22 @@ impl<T> Process<T, Run> {
     ///         .build()?;
     ///
     ///     // Run the process with input data
-    ///     let counter = bpmn.run(Counter::default())?;
+    ///     let result = bpmn.run(Counter::default())?;
     ///
     ///     // Print the result.
-    ///     println!("Count: {}", counter.count);
+    ///     println!("Count: {}", result.data.count);
+    ///     println!("Ended at: {}", result.end_node.id);
     ///     Ok(())
     /// }
     /// ```
-    pub fn run(&self, data: T) -> Result<T, Error>
+    pub fn run(&self, data: T) -> Result<ProcessOutput<T>, Error>
     where
         T: Send,
     {
         let data = Arc::new(Mutex::new(data));
+        let mut end_node_name = None;
+        let mut end_node_id = String::new();
+        let mut end_event_symbol = Symbol::None;
 
         // Run every process specified in the diagram
         for bpmn in self
@@ -192,14 +196,26 @@ impl<T> Process<T, Run> {
                     .diagram
                     .get_process(*index)
                     .ok_or_else(|| Error::MissingProcessData(id.bpmn().into()))?;
-                self.execute(ExecuteInput::new(process_data, Arc::clone(&data)))?;
+                let end_event = self.execute(ExecuteInput::new(process_data, Arc::clone(&data)))?;
+                end_node_name = end_event.name.clone();
+                end_node_id = end_event.id.bpmn().to_string();
+                end_event_symbol = end_event.symbol.clone().unwrap_or(Symbol::None);
             }
         }
 
-        Arc::into_inner(data)
+        let data = Arc::into_inner(data)
             .ok_or(Error::NoProcessResult)?
             .into_inner()
-            .map_err(|_| Error::NoProcessResult)
+            .map_err(|_| Error::NoProcessResult)?;
+
+        Ok(ProcessOutput {
+            data,
+            end_node: EndNode {
+                id: end_node_id,
+                name: end_node_name,
+                symbol: end_event_symbol,
+            },
+        })
     }
 }
 
@@ -213,7 +229,7 @@ mod tests {
             .task("Count 1", |_| None)
             .exclusive("equal to 3", |_| None)
             .build()?;
-        bpmn.run({})?;
+        let _result = bpmn.run({})?;
         Ok(())
     }
 }

@@ -10,6 +10,39 @@ pub type Data<T> = Arc<Mutex<T>>;
 /// Task result type
 pub type TaskResult = Option<Boundary>;
 
+/// Information about the end node where the process completed
+#[derive(Debug, Clone)]
+pub struct EndNode {
+    /// The BPMN ID of the end node
+    pub id: String,
+    /// The name of the end node (if it has one)
+    pub name: Option<String>,
+    /// The symbol/type of the end event.
+    ///
+    /// Valid end event symbols per BPMN standard:
+    /// - `Symbol::None` - Default/None end event (no specific trigger)
+    /// - `Symbol::Message` - Sends a message when the process ends
+    /// - `Symbol::Error` - Indicates the process ended with an error
+    /// - `Symbol::Escalation` - Error occurred but parallel paths continue
+    /// - `Symbol::Cancel` - Triggers transaction rollback
+    /// - `Symbol::Compensation` - Triggers compensation/undo work
+    /// - `Symbol::Signal` - Generates a signal when the process ends
+    /// - `Symbol::Terminate` - Ends all parallel paths immediately
+    ///
+    /// Note: `Timer`, `Conditional`, and `Link` are NOT valid for end events,
+    /// only for start, intermediate, and boundary events.
+    pub symbol: Symbol,
+}
+
+/// Process execution output containing the final data and end node information
+#[derive(Debug, Clone)]
+pub struct ProcessOutput<T> {
+    /// The final state of the process data
+    pub data: T,
+    /// Information about the end node where the process completed
+    pub end_node: EndNode,
+}
+
 /// Inclusive gateway return type
 #[derive(Default, Debug)]
 pub enum With {

@@ -59,8 +59,8 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         })
         .build()?;
 
-    let counter = bpmn.run(Counter::default())?;
-    println!("Count: {}", counter.count);
+    let result = bpmn.run(Counter::default())?;
+    println!("Count: {}", result.data.count);
     Ok(())
 }
 ```

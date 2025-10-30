@@ -174,18 +174,47 @@ impl Display for GatewayType {
     }
 }
 
-/// BPMN Symbols
+/// BPMN Symbols (Event Definitions)
+///
+/// These symbols indicate the type/trigger of BPMN events.
+/// Each symbol is valid for different event types according to the BPMN 2.0 standard:
+///
+/// | Symbol | Start | End | Intermediate | Boundary | Description |
+/// |--------|-------|-----|--------------|----------|-------------|
+/// | None | ✅ | ✅ | ✅ | ❌ | Default/untyped event |
+/// | Cancel | ❌ | ✅ | ❌ | ✅ | Transaction rollback |
+/// | Compensation | ✅ | ✅ | ✅ | ✅ | Undo/rollback work |
+/// | Conditional | ✅ | ❌ | ✅ | ✅ | Condition-based trigger |
+/// | Error | ❌ | ✅ | ❌ | ✅ | Error handling |
+/// | Escalation | ✅ | ✅ | ✅ | ✅ | Escalate to higher level |
+/// | Link | ❌ | ❌ | ✅ | ❌ | Connect process flows |
+/// | Message | ✅ | ✅ | ✅ | ✅ | Send/receive message |
+/// | Signal | ✅ | ✅ | ✅ | ✅ | Broadcast signal |
+/// | Terminate | ❌ | ✅ | ❌ | ❌ | End all parallel paths |
+/// | Timer | ✅ | ❌ | ✅ | ✅ | Time-based trigger |
 #[derive(Debug, PartialEq, Eq, Clone, Hash)]
 pub enum Symbol {
+    /// Default/untyped event (Start, Intermediate, End only)
+    None,
+    /// Transaction rollback (End, Boundary only)
     Cancel,
+    /// Undo/rollback work (All event types)
     Compensation,
+    /// Condition-based trigger (Start, Intermediate, Boundary only)
     Conditional,
+    /// Error handling (End, Boundary only)
     Error,
+    /// Escalate to higher level (All event types)
     Escalation,
+    /// Connect process flows (Intermediate only)
     Link,
+    /// Send/receive message (All event types)
     Message,
+    /// Broadcast signal (All event types)
     Signal,
+    /// End all parallel paths (End only)
     Terminate,
+    /// Time-based trigger (Start, Intermediate, Boundary only)
     Timer,
 }
 

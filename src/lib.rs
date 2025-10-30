@@ -51,10 +51,10 @@
 //!         .build()?;
 //!
 //!     // Run the process with input data
-//!     let counter = bpmn.run(Counter::default())?;
+//!     let result = bpmn.run(Counter::default())?;
 //!
 //!     // Print the result.
-//!     println!("Count: {}", counter.count);
+//!     println!("Count: {}", result.data.count);
 //!     Ok(())
 //! }
 //! ```
@@ -65,7 +65,7 @@ mod diagram;
 mod error;
 mod process;
 
-pub use api::{Boundary, Data, IntermediateEvent, TaskResult, With};
+pub use api::{Boundary, Data, EndNode, IntermediateEvent, ProcessOutput, TaskResult, With};
 pub use bpmn::Symbol;
 pub use error::{Error, Result};
 pub use process::{Build, Process, Run};
