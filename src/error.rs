@@ -60,8 +60,8 @@ pub enum Error {
     #[error("{0}")]
     BpmnRequirement(String),
 
-    #[error("Process execution stopped: {0}")]
-    ProcessBreak(String),
+    #[error("Process execution error: {0}")]
+    ProcessExecution(#[source] Box<dyn std::error::Error + Send + Sync>),
 
     #[error("{0}")]
     Builder(String),

@@ -16,11 +16,9 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             input.lock().unwrap().count += 1;
             Ok(None)
         })
-        .exclusive("equal to 3", |input| {
-            match input.lock().unwrap().count {
-                3 => Ok(Some("YES")),
-                _ => Ok(Some("NO")),
-            }
+        .exclusive("equal to 3", |input| match input.lock().unwrap().count {
+            3 => Ok(Some("YES")),
+            _ => Ok(Some("NO")),
         })
         .build()?;
 

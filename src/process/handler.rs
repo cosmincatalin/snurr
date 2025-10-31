@@ -6,7 +6,8 @@ use crate::{
 use std::{collections::HashMap, fmt::Display};
 
 type TaskCallback<T> = Box<dyn Fn(Data<T>) -> Result<TaskResult, Error> + Sync + Send>;
-type ExclusiveCallback<T> = Box<dyn Fn(Data<T>) -> Result<Option<&'static str>, Error> + Sync + Send>;
+type ExclusiveCallback<T> =
+    Box<dyn Fn(Data<T>) -> Result<Option<&'static str>, Error> + Sync + Send>;
 type InclusiveCallback<T> = Box<dyn Fn(Data<T>) -> Result<With, Error> + Sync + Send>;
 type EventBasedCallback<T> = Box<dyn Fn(Data<T>) -> Result<IntermediateEvent, Error> + Sync + Send>;
 

@@ -23,7 +23,7 @@
 //! ### main.rs
 //!
 //! ```
-//! use snurr::Process;
+//! use snurr::{Error, Process};
 //!
 //! extern crate pretty_env_logger;
 //!
@@ -38,15 +38,19 @@
 //!     // Create process from BPMN file
 //!     let bpmn = Process::<Counter>::new("examples/example.bpmn")?
 //!         .task("Count 1", |input| {
-//!             input.lock().unwrap().count += 1;
-//!             None
+//!             let mut data = input.lock().unwrap();
+//!             // You can stop process execution with custom errors
+//!             if data.count > 100 {
+//!                 return Err(Error::ProcessExecution("Count exceeded maximum".into()));
+//!             }
+//!             data.count += 1;
+//!             Ok(None)
 //!         })
 //!         .exclusive("equal to 3", |input| {
 //!             match input.lock().unwrap().count {
-//!                 3 => "YES",
-//!                 _ => "NO",
+//!                 3 => Ok(Some("YES")),
+//!                 _ => Ok(Some("NO")),
 //!             }
-//!             .into()
 //!         })
 //!         .build()?;
 //!
@@ -55,6 +59,7 @@
 //!
 //!     // Print the result.
 //!     println!("Count: {}", result.data.count);
+//!     println!("Ended at: {}", result.end_node.id);
 //!     Ok(())
 //! }
 //! ```

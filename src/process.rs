@@ -154,7 +154,7 @@ impl<T> Process<T, Run> {
     ///         .task("Count 1", |input| {
     ///             let mut data = input.lock().unwrap();
     ///             if data.count > 100 {
-    ///                 return Err(Error::ProcessBreak("Count too high".into()));
+    ///                 return Err(Error::ProcessExecution("Count too high".to_string().into()));
     ///             }
     ///             data.count += 1;
     ///             Ok(None)

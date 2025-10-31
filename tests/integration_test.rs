@@ -80,7 +80,10 @@ fn subprocess_message_end() -> Result<()> {
         .exclusive("CHOOSE", |_| Ok(Default::default()))
         .build()?;
     let result_default = bpmn_default.run(Counter::default())?;
-    assert_eq!(result.data.count, result_default.data.count, "None and Default::default() should produce identical results");
+    assert_eq!(
+        result.data.count, result_default.data.count,
+        "None and Default::default() should produce identical results"
+    );
 
     Ok(())
 }
@@ -117,8 +120,14 @@ fn exclusive_gateway_default_path() -> Result<()> {
         .exclusive("CHOOSE", |_| Ok(Default::default()))
         .build()?;
     let result_default = bpmn_default.run(Counter::default())?;
-    assert_eq!(result_default.data.count, 4, "Default::default() should behave identically to None");
-    assert_eq!(result.data.count, result_default.data.count, "Both approaches should produce the same result");
+    assert_eq!(
+        result_default.data.count, 4,
+        "Default::default() should behave identically to None"
+    );
+    assert_eq!(
+        result.data.count, result_default.data.count,
+        "Both approaches should produce the same result"
+    );
 
     Ok(())
 }
@@ -199,8 +208,14 @@ fn inclusive_gateway_default_path() -> Result<()> {
         .inclusive("CHOOSE", |_| Ok(Vec::<&str>::new().into()))
         .build()?;
     let result_empty = bpmn_empty_vec.run(Counter::default())?;
-    assert_eq!(result_empty.data.count, 5, "Empty Vec should behave identically to Default::default()");
-    assert_eq!(result.data.count, result_empty.data.count, "Both approaches should produce the same result");
+    assert_eq!(
+        result_empty.data.count, 5,
+        "Empty Vec should behave identically to Default::default()"
+    );
+    assert_eq!(
+        result.data.count, result_empty.data.count,
+        "Both approaches should produce the same result"
+    );
 
     Ok(())
 }
@@ -468,7 +483,10 @@ fn showcase() -> Result<()> {
         .exclusive("RUN DEFAULT", |_| Ok(Default::default()))
         .build()?;
     let result_default = bpmn_default.run(Counter::default())?;
-    assert_eq!(result.data.count, result_default.data.count, "None and Default::default() should produce identical results");
+    assert_eq!(
+        result.data.count, result_default.data.count,
+        "None and Default::default() should produce identical results"
+    );
 
     Ok(())
 }
@@ -603,7 +621,9 @@ fn event_gateway() -> Result<()> {
         .event_based("JUNIOR GATEKEEPER", |_| {
             Ok(("Investigate", Symbol::Message).into())
         })
-        .event_based("SENIOR GATEKEEPER", |_| Ok(("Sleeping", Symbol::Timer).into()))
+        .event_based("SENIOR GATEKEEPER", |_| {
+            Ok(("Sleeping", Symbol::Timer).into())
+        })
         .build()?;
     let result = bpmn.run(Counter::default())?;
     assert_eq!(result.data.count, 2);
@@ -760,7 +780,10 @@ fn process_output_contains_end_node_info() -> Result<()> {
     assert_eq!(result.data.count, 1);
 
     // Verify we get end node information
-    assert!(!result.end_node.id.is_empty(), "End node ID should not be empty");
+    assert!(
+        !result.end_node.id.is_empty(),
+        "End node ID should not be empty"
+    );
 
     // Regular end event should have no symbol
     assert_eq!(result.end_node.symbol, Symbol::None);
@@ -777,7 +800,11 @@ fn process_output_message_end_event() -> Result<()> {
     assert_eq!(result.data.count, 0);
 
     // Verify the end event symbol is captured
-    assert_eq!(result.end_node.symbol, Symbol::Message, "Expected Message end event symbol");
+    assert_eq!(
+        result.end_node.symbol,
+        Symbol::Message,
+        "Expected Message end event symbol"
+    );
 
     Ok(())
 }
@@ -794,7 +821,11 @@ fn process_output_terminate_end_event() -> Result<()> {
     assert!(matches!(result.data.count, 2 | 3));
 
     // Verify the end event symbol is Terminate
-    assert_eq!(result.end_node.symbol, Symbol::Terminate, "Expected Terminate end event symbol");
+    assert_eq!(
+        result.end_node.symbol,
+        Symbol::Terminate,
+        "Expected Terminate end event symbol"
+    );
 
     Ok(())
 }
