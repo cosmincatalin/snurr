@@ -60,6 +60,9 @@ pub enum Error {
     #[error("{0}")]
     BpmnRequirement(String),
 
+    #[error("Process execution stopped: {0}")]
+    ProcessBreak(String),
+
     #[error("{0}")]
     Builder(String),
 

@@ -55,7 +55,7 @@ impl<T> Process<T> {
     /// Register a task function with name or bpmn id
     pub fn task<F>(mut self, name: impl Into<String>, func: F) -> Self
     where
-        F: Fn(Data<T>) -> TaskResult + 'static + Sync + Send,
+        F: Fn(Data<T>) -> Result<TaskResult, Error> + 'static + Sync + Send,
     {
         self.handler
             .add_callback(name, Callback::Task(Box::new(func)));
@@ -65,7 +65,7 @@ impl<T> Process<T> {
     /// Register an exclusive gateway function with name or bpmn id
     pub fn exclusive<F>(mut self, name: impl Into<String>, func: F) -> Self
     where
-        F: Fn(Data<T>) -> Option<&'static str> + 'static + Sync + Send,
+        F: Fn(Data<T>) -> Result<Option<&'static str>, Error> + 'static + Sync + Send,
     {
         self.handler
             .add_callback(name, Callback::Exclusive(Box::new(func)));
@@ -75,7 +75,7 @@ impl<T> Process<T> {
     /// Register an inclusive gateway function with name or bpmn id
     pub fn inclusive<F>(mut self, name: impl Into<String>, func: F) -> Self
     where
-        F: Fn(Data<T>) -> With + 'static + Sync + Send,
+        F: Fn(Data<T>) -> Result<With, Error> + 'static + Sync + Send,
     {
         self.handler
             .add_callback(name, Callback::Inclusive(Box::new(func)));
@@ -85,7 +85,7 @@ impl<T> Process<T> {
     /// Register an event based gateway function with name or bpmn id
     pub fn event_based<F>(mut self, name: impl Into<String>, func: F) -> Self
     where
-        F: Fn(Data<T>) -> IntermediateEvent + 'static + Sync + Send,
+        F: Fn(Data<T>) -> Result<IntermediateEvent, Error> + 'static + Sync + Send,
     {
         self.handler
             .add_callback(name, Callback::EventBased(Box::new(func)));
@@ -135,8 +135,11 @@ impl<T> FromStr for Process<T> {
 
 impl<T> Process<T, Run> {
     /// Run the process and return the `ProcessOutput<T>` containing the final data and end node information, or an `Error`.
+    ///
+    /// Registered functions can return `Err(Error)` to stop execution immediately.
+    ///
     /// ```
-    /// use snurr::Process;
+    /// use snurr::{Process, Error};
     ///
     /// #[derive(Debug, Default)]
     /// struct Counter {
@@ -149,15 +152,18 @@ impl<T> Process<T, Run> {
     ///     // Create process from BPMN file
     ///     let bpmn = Process::<Counter>::new("examples/example.bpmn")?
     ///         .task("Count 1", |input| {
-    ///             input.lock().unwrap().count += 1;
-    ///             None
+    ///             let mut data = input.lock().unwrap();
+    ///             if data.count > 100 {
+    ///                 return Err(Error::ProcessBreak("Count too high".into()));
+    ///             }
+    ///             data.count += 1;
+    ///             Ok(None)
     ///         })
     ///         .exclusive("equal to 3", |input| {
     ///             match input.lock().unwrap().count {
-    ///                 3 => "YES",
-    ///                 _ => "NO",
+    ///                 3 => Ok(Some("YES")),
+    ///                 _ => Ok(Some("NO")),
     ///             }
-    ///             .into()
     ///         })
     ///         .build()?;
     ///
@@ -226,8 +232,8 @@ mod tests {
     #[test]
     fn create_and_run() -> Result<(), Box<dyn std::error::Error>> {
         let bpmn = Process::new("examples/example.bpmn")?
-            .task("Count 1", |_| None)
-            .exclusive("equal to 3", |_| None)
+            .task("Count 1", |_| Ok(None))
+            .exclusive("equal to 3", |_| Ok(None))
             .build()?;
         let _result = bpmn.run({})?;
         Ok(())

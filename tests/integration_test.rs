@@ -13,10 +13,10 @@ struct Counter {
     count: u32,
 }
 
-fn func_cnt(value: u32) -> impl Fn(Data<Counter>) -> TaskResult {
+fn func_cnt(value: u32) -> impl Fn(Data<Counter>) -> std::result::Result<TaskResult, Error> {
     move |input| {
         input.lock().unwrap().count += value;
-        None
+        Ok(None)
     }
 }
 
@@ -64,20 +64,31 @@ fn subprocess_nested() -> Result<()> {
 
 #[test]
 fn subprocess_message_end() -> Result<()> {
+    // Test with Ok(None)
     let bpmn = Process::new("tests/files/subprocess_message_end.bpmn")?
         .task(COUNT_1, func_cnt(1))
         .task(COUNT_2, func_cnt(2))
-        .exclusive("CHOOSE", |_| Default::default())
+        .exclusive("CHOOSE", |_| Ok(None))
         .build()?;
     let result = bpmn.run(Counter::default())?;
     assert_eq!(result.data.count, 3);
+
+    // Verify that Ok(Default::default()) produces the same result
+    let bpmn_default = Process::new("tests/files/subprocess_message_end.bpmn")?
+        .task(COUNT_1, func_cnt(1))
+        .task(COUNT_2, func_cnt(2))
+        .exclusive("CHOOSE", |_| Ok(Default::default()))
+        .build()?;
+    let result_default = bpmn_default.run(Counter::default())?;
+    assert_eq!(result.data.count, result_default.data.count, "None and Default::default() should produce identical results");
+
     Ok(())
 }
 
 #[test]
 fn subprocess_error_message_end() -> Result<()> {
     let bpmn = Process::new("tests/files/subprocess_error_message_end.bpmn")?
-        .task(COUNT_1, |_| Some(("Overflow", Symbol::Error).into()))
+        .task(COUNT_1, |_| Ok(Some(("Overflow", Symbol::Error).into())))
         .task(COUNT_2, func_cnt(2))
         .task(COUNT_3, func_cnt(3))
         .build()?;
@@ -88,14 +99,27 @@ fn subprocess_error_message_end() -> Result<()> {
 
 #[test]
 fn exclusive_gateway_default_path() -> Result<()> {
+    // Test with Ok(None)
     let bpmn = Process::new("tests/files/exclusive_gateway.bpmn")?
         .task(COUNT_1, func_cnt(1))
         .task(COUNT_2, func_cnt(2))
         .task(COUNT_3, func_cnt(3))
-        .exclusive("CHOOSE", |_| Default::default())
+        .exclusive("CHOOSE", |_| Ok(None))
         .build()?;
     let result = bpmn.run(Counter::default())?;
     assert_eq!(result.data.count, 4);
+
+    // Verify that Ok(Default::default()) produces the same result as Ok(None)
+    let bpmn_default = Process::new("tests/files/exclusive_gateway.bpmn")?
+        .task(COUNT_1, func_cnt(1))
+        .task(COUNT_2, func_cnt(2))
+        .task(COUNT_3, func_cnt(3))
+        .exclusive("CHOOSE", |_| Ok(Default::default()))
+        .build()?;
+    let result_default = bpmn_default.run(Counter::default())?;
+    assert_eq!(result_default.data.count, 4, "Default::default() should behave identically to None");
+    assert_eq!(result.data.count, result_default.data.count, "Both approaches should produce the same result");
+
     Ok(())
 }
 
@@ -105,7 +129,7 @@ fn exclusive_gateway() -> Result<()> {
         .task(COUNT_1, func_cnt(1))
         .task(COUNT_2, func_cnt(2))
         .task(COUNT_3, func_cnt(3))
-        .exclusive("CHOOSE", |_| "YES".into())
+        .exclusive("CHOOSE", |_| Ok(Some("YES")))
         .build()?;
     let result = bpmn.run(Counter::default())?;
     assert_eq!(result.data.count, 3);
@@ -119,7 +143,7 @@ fn exclusive_gateway_with_id() -> Result<()> {
         .task(COUNT_2, func_cnt(2))
         .task(COUNT_3, func_cnt(3))
         // Navigate by Bpmn diagram Id instead of by Name.
-        .exclusive("CHOOSE", |_| "Flow_15z7fe3".into())
+        .exclusive("CHOOSE", |_| Ok(Some("Flow_15z7fe3")))
         .build()?;
     let result = bpmn.run(Counter::default())?;
     assert_eq!(result.data.count, 3);
@@ -133,7 +157,7 @@ fn exclusive_gateway_with_gateway_converge() -> Result<()> {
         .task(COUNT_2, func_cnt(2))
         .task(COUNT_3, func_cnt(3))
         .task(COUNT_4, func_cnt(4))
-        .exclusive("CHOOSE", |_| "YES".into())
+        .exclusive("CHOOSE", |_| Ok(Some("YES")))
         .build()?;
     let result = bpmn.run(Counter::default())?;
     assert_eq!(result.data.count, 7);
@@ -147,7 +171,7 @@ fn exclusive_gateway_with_task_converge() -> Result<()> {
         .task(COUNT_2, func_cnt(2))
         .task(COUNT_3, func_cnt(3))
         .task(COUNT_4, func_cnt(4))
-        .exclusive("CHOOSE", |_| "YES".into())
+        .exclusive("CHOOSE", |_| Ok(Some("YES")))
         .build()?;
     let result = bpmn.run(Counter::default())?;
     assert_eq!(result.data.count, 7);
@@ -156,15 +180,28 @@ fn exclusive_gateway_with_task_converge() -> Result<()> {
 
 #[test]
 fn inclusive_gateway_default_path() -> Result<()> {
+    // Test with Ok(Default::default())
     let bpmn = Process::new("tests/files/inclusive_gateway.bpmn")?
         .task(COUNT_1, func_cnt(1))
         .task(COUNT_2, func_cnt(2))
         .task(COUNT_3, func_cnt(3))
-        // Empty vec run default path
-        .inclusive("CHOOSE", |_| Default::default())
+        // Empty vec runs default path
+        .inclusive("CHOOSE", |_| Ok(Default::default()))
         .build()?;
     let result = bpmn.run(Counter::default())?;
     assert_eq!(result.data.count, 5);
+
+    // Verify that an explicit empty Vec produces the same result as Default::default()
+    let bpmn_empty_vec = Process::new("tests/files/inclusive_gateway.bpmn")?
+        .task(COUNT_1, func_cnt(1))
+        .task(COUNT_2, func_cnt(2))
+        .task(COUNT_3, func_cnt(3))
+        .inclusive("CHOOSE", |_| Ok(Vec::<&str>::new().into()))
+        .build()?;
+    let result_empty = bpmn_empty_vec.run(Counter::default())?;
+    assert_eq!(result_empty.data.count, 5, "Empty Vec should behave identically to Default::default()");
+    assert_eq!(result.data.count, result_empty.data.count, "Both approaches should produce the same result");
+
     Ok(())
 }
 
@@ -174,7 +211,7 @@ fn inclusive_gateway() -> Result<()> {
         .task(COUNT_1, func_cnt(1))
         .task(COUNT_2, func_cnt(2))
         .task(COUNT_3, func_cnt(3))
-        .inclusive("CHOOSE", |_| vec!["YES", "NO"].into())
+        .inclusive("CHOOSE", |_| Ok(vec!["YES", "NO"].into()))
         .build()?;
     let result = bpmn.run(Counter::default())?;
     assert_eq!(result.data.count, 7);
@@ -187,7 +224,7 @@ fn inclusive_gateway_same_flow_used_multiple_times() -> Result<()> {
         .task(COUNT_1, func_cnt(1))
         .task(COUNT_2, func_cnt(2))
         .task(COUNT_3, func_cnt(3))
-        .inclusive("CHOOSE", |_| vec!["YES", "YES", "NO", "NO"].into())
+        .inclusive("CHOOSE", |_| Ok(vec!["YES", "YES", "NO", "NO"].into()))
         .build()?;
     let result = bpmn.run(Counter::default())?;
     assert_eq!(result.data.count, 7);
@@ -200,7 +237,7 @@ fn inclusive_gateway_split_end() -> Result<()> {
         .task(COUNT_1, func_cnt(1))
         .task(COUNT_2, func_cnt(2))
         .task(COUNT_3, func_cnt(3))
-        .inclusive("Gateway_0jgakfl", |_| vec!["YES", "NO"].into())
+        .inclusive("Gateway_0jgakfl", |_| Ok(vec!["YES", "NO"].into()))
         .build()?;
     let result = bpmn.run(Counter::default())?;
     assert_eq!(result.data.count, 6);
@@ -209,11 +246,12 @@ fn inclusive_gateway_split_end() -> Result<()> {
 
 #[test]
 fn inclusive_gateway_no_output() -> Result<()> {
+    // Test with Ok(Default::default())
     let bpmn = Process::new("tests/files/inclusive_gateway_no_output.bpmn")?
-        .task("A", |_| None)
-        .task("B", |_| None)
-        // Empty vec run default path
-        .inclusive("Gateway_0qmfmmo", |_| Default::default())
+        .task("A", |_| Ok(None))
+        .task("B", |_| Ok(None))
+        // Empty vec runs default path
+        .inclusive("Gateway_0qmfmmo", |_| Ok(Default::default()))
         .build()?;
 
     match bpmn.run(Counter::default()) {
@@ -223,6 +261,22 @@ fn inclusive_gateway_no_output() -> Result<()> {
         ),
         _ => panic!("Expected an error"),
     }
+
+    // Verify that an explicit empty Vec behaves the same as Default::default()
+    let bpmn_empty = Process::new("tests/files/inclusive_gateway_no_output.bpmn")?
+        .task("A", |_| Ok(None))
+        .task("B", |_| Ok(None))
+        .inclusive("Gateway_0qmfmmo", |_| Ok(Vec::<&str>::new().into()))
+        .build()?;
+
+    match bpmn_empty.run(Counter::default()) {
+        Err(error) => assert!(
+            matches!(error, Error::MissingOutput(_)),
+            "Default::default() and empty Vec should both produce MissingOutput error"
+        ),
+        _ => panic!("Expected an error"),
+    }
+
     Ok(())
 }
 
@@ -230,8 +284,8 @@ fn inclusive_gateway_no_output() -> Result<()> {
 fn inclusive_join_fork() -> Result<()> {
     let bpmn = Process::new("tests/files/inclusive_join_fork.bpmn")?
         .task(COUNT_1, func_cnt(1))
-        .inclusive("GW A", |_| vec!["A", "B"].into())
-        .inclusive("GW B", |_| vec!["A", "B", "C"].into())
+        .inclusive("GW A", |_| Ok(vec!["A", "B"].into()))
+        .inclusive("GW B", |_| Ok(vec!["A", "B", "C"].into()))
         .build()?;
     let result = bpmn.run(Counter::default())?;
     assert_eq!(result.data.count, 6);
@@ -242,8 +296,8 @@ fn inclusive_join_fork() -> Result<()> {
 fn inclusive_join_fork_gwb_one_flow() -> Result<()> {
     let bpmn = Process::new("tests/files/inclusive_join_fork.bpmn")?
         .task(COUNT_1, func_cnt(1))
-        .inclusive("GW A", |_| vec!["A", "B"].into())
-        .inclusive("GW B", |_| "A".into())
+        .inclusive("GW A", |_| Ok(vec!["A", "B"].into()))
+        .inclusive("GW B", |_| Ok("A".into()))
         .build()?;
     let result = bpmn.run(Counter::default())?;
     assert_eq!(result.data.count, 4);
@@ -254,11 +308,11 @@ fn inclusive_join_fork_gwb_one_flow() -> Result<()> {
 fn inclusive_join_fork_gateway_verify_sync() -> Result<()> {
     let bpmn = Process::new("tests/files/inclusive_join_fork.bpmn")?
         .task(COUNT_1, func_cnt(1))
-        .inclusive("GW A", |_| vec!["A", "B"].into())
+        .inclusive("GW A", |_| Ok(vec!["A", "B"].into()))
         .inclusive("GW B", |input| {
             // Make sure that the gateway is only executed once. Do not recommend to mutate data in gateway.
             input.lock().unwrap().count += 1;
-            vec!["A", "B", "C"].into()
+            Ok(vec!["A", "B", "C"].into())
         })
         .build()?;
     let result = bpmn.run(Counter::default())?;
@@ -270,12 +324,12 @@ fn inclusive_join_fork_gateway_verify_sync() -> Result<()> {
 fn parallel_inclusive_join_fork() -> Result<()> {
     let bpmn = Process::new("tests/files/parallel_inclusive_join_fork.bpmn")?
         .task(COUNT_1, func_cnt(1))
-        .inclusive("GW A", |_| vec!["A", "B"].into())
-        .inclusive("GW AA", |_| vec!["A", "B", "C"].into())
-        .inclusive("GW AAA", |_| vec!["A", "B", "C", "D", "E"].into())
-        .inclusive("GW B", |_| vec!["A", "B", "C"].into())
-        .inclusive("GW BB", |_| vec!["A", "B"].into())
-        .inclusive("GW BBB", |_| vec!["A", "B", "C", "D"].into())
+        .inclusive("GW A", |_| Ok(vec!["A", "B"].into()))
+        .inclusive("GW AA", |_| Ok(vec!["A", "B", "C"].into()))
+        .inclusive("GW AAA", |_| Ok(vec!["A", "B", "C", "D", "E"].into()))
+        .inclusive("GW B", |_| Ok(vec!["A", "B", "C"].into()))
+        .inclusive("GW BB", |_| Ok(vec!["A", "B"].into()))
+        .inclusive("GW BBB", |_| Ok(vec!["A", "B", "C", "D"].into()))
         .build()?;
     let result = bpmn.run(Counter::default())?;
     assert_eq!(result.data.count, 23);
@@ -286,7 +340,7 @@ fn parallel_inclusive_join_fork() -> Result<()> {
 fn inclusive_with_parallel() -> Result<()> {
     let bpmn = Process::new("tests/files/inclusive_with_parallel.bpmn")?
         .task(COUNT_1, func_cnt(1))
-        .inclusive("GW A", |_| vec!["A", "B"].into())
+        .inclusive("GW A", |_| Ok(vec!["A", "B"].into()))
         .build()?;
     let result = bpmn.run(Counter::default())?;
     assert_eq!(result.data.count, 5);
@@ -309,8 +363,8 @@ fn parallell_gateway() -> Result<()> {
 #[test]
 fn error_handling() -> Result<()> {
     let bpmn = Process::new("tests/files/error_handling.bpmn")?
-        .task(COUNT_1, |_| Some(Symbol::Error.into()))
-        .task(COUNT_2, |_| Some(Symbol::Error.into()))
+        .task(COUNT_1, |_| Ok(Some(Symbol::Error.into())))
+        .task(COUNT_2, |_| Ok(Some(Symbol::Error.into())))
         .task(COUNT_3, func_cnt(3))
         .build()?;
     let result = bpmn.run(Counter::default())?;
@@ -321,7 +375,7 @@ fn error_handling() -> Result<()> {
 #[test]
 fn two_boundary_timer_thrown() -> Result<()> {
     let bpmn = Process::new("tests/files/two_boundary.bpmn")?
-        .task(COUNT_1, |_| Some(("Timeout", Symbol::Timer).into()))
+        .task(COUNT_1, |_| Ok(Some(("Timeout", Symbol::Timer).into())))
         .task(COUNT_2, func_cnt(2))
         .task(COUNT_3, func_cnt(3))
         .build()?;
@@ -333,7 +387,7 @@ fn two_boundary_timer_thrown() -> Result<()> {
 #[test]
 fn two_boundary_error_thrown() -> Result<()> {
     let bpmn = Process::new("tests/files/two_boundary.bpmn")?
-        .task(COUNT_1, |_| Some(("Error", Symbol::Error).into()))
+        .task(COUNT_1, |_| Ok(Some(("Error", Symbol::Error).into())))
         .task(COUNT_2, func_cnt(2))
         .task(COUNT_3, func_cnt(3))
         .build()?;
@@ -345,7 +399,7 @@ fn two_boundary_error_thrown() -> Result<()> {
 #[test]
 fn multiple_boundaries_same_symbol() -> Result<()> {
     let bpmn = Process::new("tests/files/multiple_boundaries_same_symbol.bpmn")?
-        .task(COUNT_1, |_| Some(("M2", Symbol::Message).into()))
+        .task(COUNT_1, |_| Ok(Some(("M2", Symbol::Message).into())))
         .task(COUNT_2, func_cnt(2))
         .task(COUNT_3, func_cnt(3))
         .build()?;
@@ -392,16 +446,30 @@ fn subprocess_external_link_fail() -> snurr::Result<()> {
 
 #[test]
 fn showcase() -> Result<()> {
+    // Test with Ok(None) for exclusive gateway
     let bpmn = Process::new("tests/files/showcase.bpmn")?
         .task(COUNT_1, func_cnt(1))
         .task(COUNT_2, func_cnt(2))
-        .task("Timeout 1", |_| Some(Symbol::Timer.into()))
-        .inclusive("RUN ALL", |_| vec!["A", "B"].into())
-        .inclusive("RUN A", |_| "A".into())
-        .exclusive("RUN DEFAULT", |_| Default::default())
+        .task("Timeout 1", |_| Ok(Some(Symbol::Timer.into())))
+        .inclusive("RUN ALL", |_| Ok(vec!["A", "B"].into()))
+        .inclusive("RUN A", |_| Ok("A".into()))
+        .exclusive("RUN DEFAULT", |_| Ok(None))
         .build()?;
     let result = bpmn.run(Counter::default())?;
     assert_eq!(result.data.count, 16);
+
+    // Verify that Ok(Default::default()) produces the same result
+    let bpmn_default = Process::new("tests/files/showcase.bpmn")?
+        .task(COUNT_1, func_cnt(1))
+        .task(COUNT_2, func_cnt(2))
+        .task("Timeout 1", |_| Ok(Some(Symbol::Timer.into())))
+        .inclusive("RUN ALL", |_| Ok(vec!["A", "B"].into()))
+        .inclusive("RUN A", |_| Ok("A".into()))
+        .exclusive("RUN DEFAULT", |_| Ok(Default::default()))
+        .build()?;
+    let result_default = bpmn_default.run(Counter::default())?;
+    assert_eq!(result.data.count, result_default.data.count, "None and Default::default() should produce identical results");
+
     Ok(())
 }
 
@@ -437,8 +505,8 @@ fn process_end_with_symbol() -> Result<()> {
 fn inclusive_gateway_not_all_joined() -> Result<()> {
     let bpmn = Process::new("tests/files/inclusive_gateway_not_all_joined.bpmn")?
         .task(COUNT_1, func_cnt(1))
-        .inclusive("RUN ALL", |_| vec!["A", "B"].into())
-        .exclusive("RUN C", |_| "C".into())
+        .inclusive("RUN ALL", |_| Ok(vec!["A", "B"].into()))
+        .exclusive("RUN C", |_| Ok(Some("C")))
         .build()?;
     let result = bpmn.run(Counter::default())?;
     assert_eq!(result.data.count, 3);
@@ -517,8 +585,8 @@ fn exclusive_gateway_merging_branching() -> Result<()> {
     let bpmn = Process::new("tests/files/exclusive_gateway_merging_branching.bpmn")?
         .task(COUNT_1, func_cnt(1))
         .task(COUNT_2, func_cnt(2))
-        .exclusive("BRANCHING", |_| A)
-        .exclusive("MERGE AND BRANCH", |_| B)
+        .exclusive("BRANCHING", |_| Ok(A))
+        .exclusive("MERGE AND BRANCH", |_| Ok(B))
         .build()?;
     let result = bpmn.run(Counter::default())?;
     assert_eq!(result.data.count, 3);
@@ -531,11 +599,11 @@ fn event_gateway() -> Result<()> {
         .task(COUNT_1, func_cnt(1))
         .task(COUNT_2, func_cnt(2))
         .task(COUNT_3, func_cnt(3))
-        .task("Investigate", |_| None)
+        .task("Investigate", |_| Ok(None))
         .event_based("JUNIOR GATEKEEPER", |_| {
-            ("Investigate", Symbol::Message).into()
+            Ok(("Investigate", Symbol::Message).into())
         })
-        .event_based("SENIOR GATEKEEPER", |_| ("Sleeping", Symbol::Timer).into())
+        .event_based("SENIOR GATEKEEPER", |_| Ok(("Sleeping", Symbol::Timer).into()))
         .build()?;
     let result = bpmn.run(Counter::default())?;
     assert_eq!(result.data.count, 2);
@@ -546,10 +614,10 @@ fn event_gateway() -> Result<()> {
 fn single_flow() -> Result<()> {
     let bpmn = Process::new("tests/files/single_flow.bpmn")?
         .task(COUNT_1, func_cnt(1))
-        .exclusive("GW A", |_| A)
-        .exclusive("GW B", |_| A)
-        .exclusive("GW C", |_| A)
-        .exclusive("GW D", |_| A)
+        .exclusive("GW A", |_| Ok(A))
+        .exclusive("GW B", |_| Ok(A))
+        .exclusive("GW C", |_| Ok(A))
+        .exclusive("GW D", |_| Ok(A))
         .build()?;
     let result = bpmn.run(Counter::default())?;
     assert_eq!(result.data.count, 18);
@@ -560,7 +628,7 @@ fn single_flow() -> Result<()> {
 fn terminate_event() -> Result<()> {
     let bpmn = Process::new("tests/files/terminate_event.bpmn")?
         .task(COUNT_1, func_cnt(1))
-        .exclusive("Terminate?", |_| "YES".into())
+        .exclusive("Terminate?", |_| Ok(Some("YES")))
         .build()?;
     let result = bpmn.run(Counter::default())?;
 
@@ -573,7 +641,7 @@ fn terminate_event() -> Result<()> {
 fn terminate_event_sub_process() -> Result<()> {
     let bpmn = Process::new("tests/files/terminate_event_sub_process.bpmn")?
         .task(COUNT_1, func_cnt(1))
-        .exclusive("Terminate?", |_| "YES".into())
+        .exclusive("Terminate?", |_| Ok(Some("YES")))
         .build()?;
     let result = bpmn.run(Counter::default())?;
 
@@ -622,7 +690,7 @@ fn cancel_transaction() -> Result<()> {
     // An cancel end event terminates the transaction and use the cancel boundary.
     let bpmn = Process::new("tests/files/cancel_transaction.bpmn")?
         .task(COUNT_1, func_cnt(1))
-        .exclusive("Cancel?", |_| "YES".into())
+        .exclusive("Cancel?", |_| Ok(Some("YES")))
         .build()?;
     let result = bpmn.run(Counter::default())?;
     // NOTE 2 or 3 is OK result. The order in concurrent scenarios might differ.
@@ -634,7 +702,7 @@ fn cancel_transaction() -> Result<()> {
 fn parallel_stalled_execution() -> Result<()> {
     let bpmn = Process::new("tests/files/parallel_stalled_execution.bpmn")?
         .task(COUNT_1, func_cnt(1))
-        .exclusive("Message?", |_| "YES".into())
+        .exclusive("Message?", |_| Ok(Some("YES")))
         .build()?;
 
     match bpmn.run(Counter::default()) {
@@ -718,7 +786,7 @@ fn process_output_message_end_event() -> Result<()> {
 fn process_output_terminate_end_event() -> Result<()> {
     let bpmn = Process::new("tests/files/terminate_event.bpmn")?
         .task(COUNT_1, func_cnt(1))
-        .exclusive("Terminate?", |_| "YES".into())
+        .exclusive("Terminate?", |_| Ok(Some("YES")))
         .build()?;
     let result = bpmn.run(Counter::default())?;
 

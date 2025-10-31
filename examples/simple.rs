@@ -14,14 +14,13 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let bpmn = Process::<Counter>::new("examples/example.bpmn")?
         .task("Count 1", |input| {
             input.lock().unwrap().count += 1;
-            None
+            Ok(None)
         })
         .exclusive("equal to 3", |input| {
             match input.lock().unwrap().count {
-                3 => "YES",
-                _ => "NO",
+                3 => Ok(Some("YES")),
+                _ => Ok(Some("NO")),
             }
-            .into()
         })
         .build()?;
 
